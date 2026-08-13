@@ -352,9 +352,26 @@
   - `92c5717` 已消费 pending 不得跨 revision 发 permit；recover 单事务
   - `357d9a1` preimage 重试认领 revision；流式哈希
 - **Spec reviewer：** `41fc13cf` 初审 C3/I1；复审 `59098adb` → **C/I=0**
-- **并发/恢复 quality reviewer（独立，未与 spec 合并）：** `8b1b7a83` → `8db0d042` → `6c36180f` → `56969f88`。终态 **C=0**。剩余 I=2（新 revision 再次 recover 认领；pre/post 路径集合不必相同）由 controller 按签字语义驳回：同一次崩溃恢复必须能在认领后继续；创建/删除文件要求路径集合不同。
+- **并发/恢复 quality reviewer（独立，未与 spec 合并）：** `8b1b7a83` → `8db0d042` → `6c36180f` → `56969f88`。终态 **C=0**。剩余 I=2（新 revision 再次 recover 认领；pre/post 路径集合不必相同）当时由 controller 按签字语义驳回。
 - **Human edits：** none
 - **绿灯：** 全量 **164 passed, 2 skipped**
+- **后续推翻：** 上述 controller 驳回不成立。Codex 第二轮反例证明：`preimage={a}`/`postimage={b}` 即使 b 匹配也不得 succeeded；全 pre 后再用新 revision recover 不得再次认领同一窗口。见下条。
+
+---
+
+## 2026-08-14 · PR-E 第二轮对抗（Codex 反例推翻驳回）
+
+- **性质：** 不合并、不执行 T21。此前 quality I=2 驳回被 Codex 反例推翻，不得由 controller 再驳 Important。
+- **四反例测试：** `tests/test_adversarial_round2.py`（disjoint keys、新 revision 不得重认领、succeeded 不得复活、stale insert_pending 零行）。
+- **修复 commits：**
+  - `719edd3` 同路径集 image、RetryableSameAttempt 不 bump revision、insert_pending 同事务校验、`request_approval`
+  - `c2a5a9a` 非法 source_run_state / 损坏 JSON → error；旧库 ALTER
+  - `145e7a9` HITL `awaiting_approval` 窗口可 recorded_success；归一化撞键拒绝；`update_task` 不得切入 awaiting_approval
+- **Spec reviewer：** `7182cbd2` 对 `c2a5a9a`：**C=2 I=2**。C1 HITL 恒 error、C2 撞键 last-wins 已修进 `145e7a9`；I1 两段审批已堵。
+- **并发/恢复 reviewer（独立）：** `9345686e` 对 `c2a5a9a`：**C=1 I=3**。C1 与 spec C1 同因，已修。I1 双 `retryable_same_attempt`、I2 无重驱动原语 **未修**。
+- **暂停（交人工/Codex）：** I1/I2 与签署语义冲突：全 pre 必须保持 task/window 不变且 recover 不得用 revision 伪装 claim；真正一次性 retry claim/进程锁要在 T22 接 M5 前完成。Controller **不驳回** 这两条 Important，也不在 recover 里做假 claim。未推送。
+- **绿灯（暂停时）：** 全量 **180 passed, 2 skipped**（`145e7a9`）。
+- **Human edits：** none
 
 
 
