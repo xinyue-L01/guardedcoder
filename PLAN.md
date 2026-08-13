@@ -88,7 +88,7 @@ Human edits: <none|简述>
 | T32 | 完整 patch artifact | pending | — | WT-I / PR-I |
 | T33 | apply-back 窗口 | pending | — | WT-I / PR-I |
 | T34 | 记忆写入检索 + CLI 函数 | done | 932addac7c9f9de4fe37b920a63e3174e0b509bd | WT-J / PR-J |
-| T35 | 不授权、summary、100/90 清理 | pending | — | WT-J / PR-J |
+| T35 | 不授权、summary、100/90 清理 | done | 24e4063eccede65776808992ac00873362a819b8 | WT-J / PR-J |
 | T36 | argparse CLI | pending | — | WT-K / PR-K |
 | T37 | config / auth | pending | — | WT-K / PR-K |
 | T38 | run/HITL/apply/discard/memory CLI | pending | — | WT-K / PR-K |

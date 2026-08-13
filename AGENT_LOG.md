@@ -389,6 +389,20 @@
 - **绿灯：** `tests/test_memory.py` 11 passed；全量 **191 passed, 2 skipped**
 - **实现 commit：** `932addac7c9f9de4fe37b920a63e3174e0b509bd`
 
+---
+
+## 2026-08-14 · T35 记忆不授权 + summary + 保留策略
+
+- **Task：** T35（WT-J / `feat/j-memory`）。未合并 PR-J。
+- **Implementer：** `72ee70f4-8670-48bc-a95c-78459cd619e0`
+- **Spec reviewer：** `48bd5fe0-c627-4d0e-b8e1-f22850ad316b` → Spec ✅ C/I=0。Minor：`add_task_summary` 不拒 diff（门闩在 `build_task_summary`）。
+- **Quality reviewer：** 初审 `c6253ed5-bd9e-4f34-a1ee-932c1896af9e` Needs fixes（Important×2：GC 事务外快照、DELETE 未用规范化 repo_id）；复审 `ccdd5307-52cd-4d3b-9df8-318fa551ce05` → Approved C/I=0。Minor：summary 测试未锁 caplog；signature 测试禁 `write_paths`。
+- **Human edits：** none
+- **红灯：** `ModuleNotFoundError: No module named 'guardedcoder.memory.summarize'`。GC 补测：`gc_task_summaries(conn, "  repo-a  ")` 声称 deleted=1 但行仍在。
+- **绿灯：** `tests/test_memory_trust.py` 7 passed；全量 **198 passed, 2 skipped**
+- **实现 commit：** `24e4063eccede65776808992ac00873362a819b8`
+
+
 
 
 
