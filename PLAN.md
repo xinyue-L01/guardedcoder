@@ -15,7 +15,7 @@
 - TDD：先红后绿；保存红灯证据。
 - 每个实现 task 一个新鲜 subagent；commit/PR 注明来源与人工修改。
 - 每个大模块一个 worktree / PR；**worktree 必须从依赖 PR 已合并的最新 `main` 创建**，禁止一次性从旧 base 开全部 worktree。
-- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。下一实现 task 为 T16（PR-E；以状态表为准）。本 PR-D 在 T15 停止。
+- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。下一实现 task 为 T17（PR-E；以状态表为准）。本 PR-E 在 T20 停止。
 - API Key 只进 keyring；不进 TOML/Git/日志/状态/记忆/Mock。
 - 五工具 + `finish`；不为演示新增 network/push/publish。
 - 完整 patch 禁止静默截断。
@@ -69,7 +69,7 @@ Human edits: <none|简述>
 | T13 | 硬规则与 profile 分码 | done | dcb5be736912c184fd41aa9af2c18036b31526ad | WT-D / PR-D |
 | T14 | 风险分类 | done | 2423edd5ba9a930966057afe82ec57aa6ada6eb1 | WT-D / PR-D |
 | T15 | 治理求交评估 | done | 78b8beef5c7a9d044a7076d4c60905d3a8895090 | WT-D / PR-D |
-| T16 | SQLite、Task、AuditEvent 脱敏 | pending | — | WT-E / PR-E |
+| T16 | SQLite、Task、AuditEvent 脱敏 | done | TBD | WT-E / PR-E |
 | T17 | M8 创建并消费 permit | pending | — | WT-E / PR-E |
 | T18 | apply_patch 窗口恢复 | pending | — | WT-E / PR-E |
 | T19 | run_command 窗口 fail-closed | pending | — | WT-E / PR-E |

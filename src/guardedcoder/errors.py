@@ -12,3 +12,7 @@ class SecretLeakError(Exception):
 
 class RemoteKeyHttpError(Exception):
     """Raised when a configured key would be sent to a remote HTTP endpoint."""
+
+
+class StaleRevisionError(Exception):
+    """Raised when a task update does not match the expected state_revision."""

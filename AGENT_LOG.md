@@ -257,6 +257,19 @@
 - **绿灯：** 全量 **111 passed, 1 skipped**。
 - **Follow-up commit：** `d10f324e91eb7b7dca70a7ae1f5e63d0f56ea61e`
 
+---
+
+## 2026-08-14 · T16 SQLite、Task、AuditEvent 脱敏（WT-E）
+
+- **Task：** T16（WT-E / `feat/e-persist`）。未执行 T17。未合并 PR-E。
+- **Implementer：** Cursor generalPurpose `d1817fc4-3828-48dc-9e5a-0e9bf6896d55`
+- **Spec reviewer：** `de6ecf7c-aaac-48ba-ae68-8ba73a9a183a` → C/I=0
+- **Quality reviewer：** `372b061d-c105-4fbc-b3b3-43a7f40d3719` → C/I=0
+- **Human edits：** none
+- **红灯：** collection `ImportError`（缺 persist 模块 / `StaleRevisionError`）
+- **绿灯：** `test_db` 7 + `test_audit` 1；全量 **119 passed, 1 skipped**
+- **实现 commit：** TBD
+
 
 
 
