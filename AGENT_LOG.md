@@ -376,6 +376,30 @@
 - **绿灯（裁决后）：** 全量 **180 passed, 2 skipped**。
 - **推送：** `feat/e-persist`（不合并、不执行 T21）。
 
+---
 
+## 2026-08-14 · T31 脏树拒绝、创建/discard 归属
+
+- **Task：** T31（WT-I / `feat/i-workspace`）。未执行 T32。未合并 PR-I。
+- **Implementer：** lane-i-owner
+- **Spec reviewer：** 初审 `4c8e507f-25ff-4e8e-8987-bcad5903bb38` → C/I=0；复审 `ee113a4b-f6a1-4e67-af34-3f4646ab297b` → Spec ✅ C/I=0。Minor：`resolve()` 跟随符号链接。
+- **Quality reviewer：** 初审 `710f66bd-1f37-4b07-a5c5-fee62fc2a351` Needs fixes（I=3：HEAD 冻结、Windows 设备名/尾点、缺 `discard_owned_worktree` 测试）；复审 `ab524144-2d7d-4e1b-82e8-a357c09b4ca7` → Approved C/I=0。Minor：remove 后残留、清理异常掩盖原因。
+- **Human edits：** none
+- **红灯：** `.superpowers/sdd/t31-red.txt` collection `ModuleNotFoundError: guardedcoder.workspace`；审查修复红灯 `foo.` DID NOT RAISE、`NUL` 设备路径、HEAD 移动后 discard 因 `HEAD==base_commit` 拒绝。
+- **绿灯：** `tests/test_worktree.py` **18 passed**；全量 **198 passed, 2 skipped**。
+- **实现 commit：** `bb1426bc7877a853e8c633022c9245042f8b478c`
+
+---
+
+## 2026-08-14 · T31 脏树拒绝、创建/discard 归属
+
+- **Task：** T31（WT-I / `feat/i-workspace`）。未执行 T32。未合并 PR-I。
+- **Implementer：** lane-i-owner
+- **Spec reviewer：** 初审 `4c8e507f-25ff-4e8e-8987-bcad5903bb38` → C/I=0；复审 `ee113a4b-f6a1-4e67-af34-3f4646ab297b` → Spec ✅ C/I=0。Minor：`resolve()` 跟随符号链接。
+- **Quality reviewer：** 初审 `710f66bd-1f37-4b07-a5c5-fee62fc2a351` Needs fixes（I=3：HEAD 冻结、Windows 设备名/尾点、缺 `discard_owned_worktree` 测试）；复审 `ab524144-2d7d-4e1b-82e8-a357c09b4ca7` → Approved C/I=0。Minor：remove 后残留、清理异常掩盖原因。
+- **Human edits：** none
+- **红灯：** `.superpowers/sdd/t31-red.txt` collection `ModuleNotFoundError: guardedcoder.workspace`；审查修复红灯 `foo.` DID NOT RAISE、`NUL` 设备路径、HEAD 移动后 discard 因 `HEAD==base_commit` 拒绝。
+- **绿灯：** `tests/test_worktree.py` **18 passed**；全量 **198 passed, 2 skipped**。
+- **实现 commit：** `bb1426bc7877a853e8c633022c9245042f8b478c`
 
 

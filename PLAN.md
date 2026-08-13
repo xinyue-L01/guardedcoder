@@ -84,7 +84,7 @@ Human edits: <none|简述>
 | T28 | 主循环单步（正确 permit 序） | pending | — | WT-H / PR-H |
 | T29 | finish 门闩 + PatchArtifactPort | pending | — | WT-H / PR-H |
 | T30 | 反馈门控 MockLLM | pending | — | WT-H / PR-H |
-| T31 | 脏树拒绝、创建/discard 归属 | pending | — | WT-I / PR-I |
+| T31 | 脏树拒绝、创建/discard 归属 | done | bb1426bc7877a853e8c633022c9245042f8b478c | WT-I `.worktrees/wt-i-workspace`；未合并 |
 | T32 | 完整 patch artifact | pending | — | WT-I / PR-I |
 | T33 | apply-back 窗口 | pending | — | WT-I / PR-I |
 | T34 | 记忆写入检索 + CLI 函数 | pending | — | WT-J / PR-J |
