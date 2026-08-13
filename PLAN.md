@@ -93,7 +93,7 @@ Human edits: <none|简述>
 | T37 | config / auth | pending | — | WT-K / PR-K |
 | T38 | run/HITL/apply/discard/memory CLI | pending | — | WT-K / PR-K |
 | T39 | 机制演示 | pending | — | WT-L / PR-L |
-| T40 | 秘密扫描脚本（先于 CI） | pending | — | WT-M / PR-M |
+| T40 | 秘密扫描脚本（先于 CI） | done | ed0c8472335ba953cba7713731a5295d214c394d | WT-M / PR-M |
 | T41 | GitHub Actions + GitLab unit-test | pending | — | WT-M / PR-M（同分支，T40 之后） |
 | T43 | 端到端离线任务生命周期 | pending | — | WT-N / PR-N |
 | T42 | wheel / 许可证 / README / AGENT_LOG 审计 | pending | — | WT-O / PR-O（T43 与 T41 均完成后） |
