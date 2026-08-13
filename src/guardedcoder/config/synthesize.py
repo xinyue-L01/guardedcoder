@@ -7,6 +7,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from guardedcoder.errors import ConfigError
+from guardedcoder.governance.hard_rules import assert_hard_rules
 from guardedcoder.models.config import AppConfig
 from guardedcoder.models.envelope import Envelope
 
@@ -27,6 +28,7 @@ def synthesize_envelope(
     config: AppConfig,
     cli_overrides: dict[str, Any] | None = None,
 ) -> Envelope:
+    assert_hard_rules(config)
     values: dict[str, Any] = {name: getattr(config, name) for name in _ENVELOPE_FIELDS}
     if cli_overrides:
         unknown = set(cli_overrides) - _ALLOWED_CLI_OVERRIDES

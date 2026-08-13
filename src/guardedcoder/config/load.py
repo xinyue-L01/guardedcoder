@@ -8,6 +8,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from guardedcoder.errors import ConfigError
+from guardedcoder.governance.hard_rules import assert_hard_rules
 from guardedcoder.models.config import AppConfig
 
 _SECRET_KEYS = frozenset({"api_key", "token", "password"})
@@ -24,9 +25,11 @@ def load_app_config(path: Path) -> AppConfig:
         raise ConfigError(f"invalid TOML in {path}") from exc
     _reject_forbidden(data)
     try:
-        return AppConfig.model_validate(_freeze_lists(data))
+        config = AppConfig.model_validate(_freeze_lists(data))
     except (ValidationError, TypeError) as exc:
         raise ConfigError(f"invalid config {path}") from exc
+    assert_hard_rules(config)
+    return config
 
 
 def _reject_forbidden(obj: object) -> None:
