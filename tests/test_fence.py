@@ -47,3 +47,28 @@ def test_in_tree_normal_path_is_ok(tmp_path: Path) -> None:
     result = check_path(tmp_path, "src/foo.py")
     assert result == FenceCode.ok
     assert result == "ok"
+
+
+def test_uppercase_env_is_sensitive_even_if_missing(tmp_path: Path) -> None:
+    result = check_path(tmp_path, ".ENV")
+    assert result == FenceCode.SENSITIVE_PATH
+
+
+def test_uppercase_env_local_is_sensitive_even_if_missing(tmp_path: Path) -> None:
+    result = check_path(tmp_path, ".ENV.local")
+    assert result == FenceCode.SENSITIVE_PATH
+
+
+def test_in_tree_file_under_env_named_ancestor_is_ok(tmp_path: Path) -> None:
+    worktree = tmp_path / ".env.something" / "wt"
+    src = worktree / "src"
+    src.mkdir(parents=True)
+    (src / "foo.py").write_text("print(1)\n", encoding="utf-8")
+    result = check_path(worktree, "src/foo.py")
+    assert result == FenceCode.ok
+
+
+def test_in_tree_dotdot_filename_is_ok(tmp_path: Path) -> None:
+    (tmp_path / "..foo").write_text("x", encoding="utf-8")
+    result = check_path(tmp_path, "..foo")
+    assert result == FenceCode.ok

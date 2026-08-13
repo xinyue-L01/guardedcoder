@@ -13,8 +13,4 @@ def resolve_under_worktree(worktree: Path, user_path: str) -> Path:
 
 def is_inside_worktree(worktree: Path, resolved: Path) -> bool:
     root = worktree.resolve()
-    try:
-        relative = resolved.relative_to(root)
-    except ValueError:
-        return False
-    return not str(relative).startswith("..")
+    return resolved.is_relative_to(root)
