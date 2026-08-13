@@ -218,6 +218,20 @@
 - **绿灯：** 修复后全量 **88 passed, 1 skipped**。
 - **实现 commit：** `81529a15a5880fdcd952abcc42479ba213515019`；规范化 `dcb5be736912c184fd41aa9af2c18036b31526ad`
 
+---
+
+## 2026-08-14 · T14 风险分类（WT-D）
+
+- **Task：** T14（WT-D / `feat/d-governance`）。未执行 T15。
+- **Implementer：** `ac8faf42-7072-4216-92e7-48d24be29529`
+- **Spec reviewer：** `3757b5be-a5a0-4233-88cb-40fff6bda72b` → Spec ✅
+- **Quality reviewer：** `eb0dca3a-a156-4a3e-a8dd-7be62f4e6f02` → Approved。C/I/M=0。
+- **Human edits：** none
+- **红灯：** `No module named 'guardedcoder.governance.classify'`
+- **绿灯：** `test_classify` 8 passed；全量 **96 passed, 1 skipped**。
+- **实现 commit：** `2423edd5ba9a930966057afe82ec57aa6ada6eb1`
+
+
 
 
 
