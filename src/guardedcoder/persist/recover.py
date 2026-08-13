@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 from guardedcoder.errors import StaleRevisionError
 from guardedcoder.persist.store import update_task
@@ -31,7 +32,9 @@ def recover(
     task_id: str,
     workspace: Path,
     expected_revision: int,
+    executor: Any = None,
 ) -> None:
+    del executor
     conn.row_factory = sqlite3.Row
     win = conn.execute(
         "SELECT * FROM execution_windows WHERE task_id = ? "
@@ -40,22 +43,27 @@ def recover(
     ).fetchone()
     if win is None:
         raise LookupError(f"no open execution window for task {task_id}")
-    if win["action_kind"] != "apply_patch":
-        raise NotImplementedError(
-            f"recovery for action_kind {win['action_kind']!r} is not implemented"
-        )
-    preimage = json.loads(win["preimage_json"]) if win["preimage_json"] else None
-    postimage = json.loads(win["postimage_json"]) if win["postimage_json"] else None
-    match_post = _matches_image(workspace, postimage)
-    match_pre = _matches_image(workspace, preimage)
-    if match_post:
-        new_status = "succeeded"
-        new_run_state = "running"
-    elif match_pre:
-        return
-    else:
+    kind = win["action_kind"]
+    if kind == "run_command":
         new_status = "error"
         new_run_state = "error"
+    elif kind != "apply_patch":
+        raise NotImplementedError(
+            f"recovery for action_kind {kind!r} is not implemented"
+        )
+    else:
+        preimage = json.loads(win["preimage_json"]) if win["preimage_json"] else None
+        postimage = json.loads(win["postimage_json"]) if win["postimage_json"] else None
+        match_post = _matches_image(workspace, postimage)
+        match_pre = _matches_image(workspace, preimage)
+        if match_post:
+            new_status = "succeeded"
+            new_run_state = "running"
+        elif match_pre:
+            return
+        else:
+            new_status = "error"
+            new_run_state = "error"
 
     conn.execute("SAVEPOINT sp_recover")
     try:

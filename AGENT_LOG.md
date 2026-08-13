@@ -293,4 +293,17 @@
 - **Human edits：** none
 - **红灯：** 缺 `persist.recover`
 - **绿灯：** `test_recover_patch` 7；全量 **134 passed, 1 skipped**
+- **实现 commit：** `45b03c76b328e55067d0028ccd680aad54b4c130`
+
+---
+
+## 2026-08-14 · T19 run_command 窗口 fail-closed（WT-E）
+
+- **Task：** T19（WT-E / `feat/e-persist`）。未执行 T20。未合并 PR-E。
+- **Implementer：** `614d8405-85c8-4cb7-b60c-585ff09eee45`
+- **Spec+quality reviewer：** `7e21962e-56b7-48e2-a596-c5d32317bff1` → C/I=0
+- **Human edits：** none
+- **红灯：** run_command 仍 NotImplementedError / 缺 test_recover_command
+- **绿灯：** `test_recover_command` 2；全量 **136 passed, 1 skipped**
 - **实现 commit：** TBD
+

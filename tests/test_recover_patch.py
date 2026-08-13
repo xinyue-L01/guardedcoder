@@ -187,14 +187,13 @@ def test_run_command_not_implemented(tmp_path) -> None:
         envelope_hash="env-1",
         expected_revision=1,
     )
-    consume_permit_and_open_window(
+    window_id = consume_permit_and_open_window(
         conn,
         task_id="t1",
         permit_id=permit_id,
         expected_revision=2,
         action_kind="run_command",
     )
-    before = dict(_task(conn))
-    with pytest.raises(NotImplementedError):
-        recover(conn, task_id="t1", workspace=ws, expected_revision=3)
-    assert dict(_task(conn)) == before
+    recover(conn, task_id="t1", workspace=ws, expected_revision=3)
+    assert _task(conn)["run_state"] == "error"
+    assert _window(conn, window_id)["status"] == "error"
