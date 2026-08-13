@@ -65,7 +65,7 @@ Human edits: <none|简述>
 | T09 | 配置不能放宽硬规则 | done | 840129835f79aa89e0ed95e15b7df337f02a99ba | WT-B / PR-B |
 | T10 | MockLLM | done | 1fbba589d6e4a919756cd8e7765c3bb14cdddf0e | WT-C / PR-C |
 | T11 | OpenAICompatibleLLM | done | 44edd47821598ebd4e898c0e1a9ef91c7965e488 | WT-C / PR-C |
-| T12 | 路径围栏 | pending | — | WT-D / PR-D |
+| T12 | 路径围栏 | done | 6ce301aac696ba0d1cdcef9f6320682958c520d9 | WT-D / PR-D |
 | T13 | 硬规则与 profile 分码 | pending | — | WT-D / PR-D |
 | T14 | 风险分类 | pending | — | WT-D / PR-D |
 | T15 | 治理求交评估 | pending | — | WT-D / PR-D |
@@ -490,6 +490,17 @@ T30 将扩展门控行为，本 task 只做序列。
 ---
 
 ## Task 12: 路径围栏
+
+**状态：** done · 实现 commit `a262669dac93b01846aba41e0083415ebc60572f`；围栏收紧 `6ce301aac696ba0d1cdcef9f6320682958c520d9`
+
+- [x] 写失败测试
+- [x] 跑红灯命令，记录预期失败
+- [x] 最小实现
+- [x] 跑绿灯命令
+- [x] 重构并回归测试
+- [x] spec 合规审查（Critical 必修）
+- [x] 代码质量审查（Critical 必修）
+- [x] commit（含 Subagent / Human edits）+ 追加 `AGENT_LOG.md` + 更新本 PLAN 状态栏
 
 **依赖：** T05。路径：`tools/paths.py`, `governance/fence.py`, `tests/test_fence.py`  
 `../` 与指向树外的 symlink → `WORKSPACE_ESCAPE`；`.env` → `SENSITIVE_PATH`。

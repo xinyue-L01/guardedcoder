@@ -190,6 +190,21 @@
 - **绿灯：** 修复后 `test_openai_compat` 8 passed；全量 **27 passed**
 - **实现 commit：** `8afe6c20d14b84f3c1211bb63e03e7d19cd8fcb5`；scheme `44edd47821598ebd4e898c0e1a9ef91c7965e488`
 
+---
+
+## 2026-08-14 · T12 路径围栏（WT-D）
+
+- **Task：** T12（WT-D / `feat/d-governance`）。未执行 T13。
+- **Implementer：** `fdf2e2a3-21c5-4e53-bc2f-c8290c628579`
+- **Fixer：** `09990800-332c-446b-bb4b-cda40247a55a`（`.ENV` 大小写、祖先 `.env.*`、`is_relative_to`）
+- **Spec reviewer：** `6fd26715-bbc2-4f3f-9d9e-60c2c78dea24` → Spec ✅
+- **Quality reviewer：** 初审 `e3a08dc1-215a-47ed-8b24-e2d0e2de8d70` Needs fixes；复审 `e8008e47-6a15-430a-bcb4-477510b28469` Approved。C/I=0。
+- **Human edits：** none
+- **红灯：** `ModuleNotFoundError: No module named 'guardedcoder.governance.fence'`；修复前 `.ENV`→ok、祖先 `.env.*` 误敏、`..foo` 误逃逸。
+- **绿灯：** 修复后 `test_fence` 8 passed / 1 skipped；全量 **64 passed, 1 skipped**。
+- **实现 commit：** `a262669dac93b01846aba41e0083415ebc60572f`；收紧 `6ce301aac696ba0d1cdcef9f6320682958c520d9`
+
+
 
 
 
