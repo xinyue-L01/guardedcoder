@@ -100,6 +100,19 @@
 - **绿灯：** `test_fingerprint.py` 2 passed；全量 **13 passed**。
 - **实现 commit：** `bf52b007645c0ae165066efd5482b1aa0e36a5a6`
 
+---
+
+## 2026-08-14 · Codex branch-level follow-up（envelope_hash Minors）
+
+- **性质：** Codex 独立验收后的 **branch-level follow-up**。不重做 T02–T05；**不改 T04 已完成状态**（T04 实现 commit 仍为 `95d11d261233ee05336019567480f6e2a8044d68`）。argv_template 不可变 tuple 已完成，未重做。
+- **Implementer：** `3c483a27-d8f2-4785-b47a-e9bf3cb7ef23`
+- **Quality reviewer：** `07244bad-a483-442b-b19e-87c79b99fce8` → Approved；Critical/Important = 0。
+- **Human edits：** none
+- **红灯：** `test_explicit_envelope_hash_raises_validation_error` → `Failed: DID NOT RAISE ValidationError`（当时静默覆盖）。
+- **绿灯：** `tests/test_envelope.py` 5 passed；全量 **15 passed**。钉死 digest `06694b4f73d148902ba8baa28be3110ed98a3b32a8ef22761b707a9829ba6f45`。
+- **Follow-up commit：** `692abb57e5c6282f9fddca7dffe3c48b3832500a`
+
+
 
 
 
