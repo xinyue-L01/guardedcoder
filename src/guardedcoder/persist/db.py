@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS permits (
     fingerprint TEXT NOT NULL,
     envelope_hash TEXT NOT NULL,
     state_revision INTEGER NOT NULL,
-    consumed INTEGER NOT NULL DEFAULT 0
+    consumed INTEGER NOT NULL DEFAULT 0,
+    pending_action_id TEXT REFERENCES pending_actions(pending_action_id)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_permit_unconsumed
@@ -57,6 +58,10 @@ CREATE TABLE IF NOT EXISTS execution_windows (
     postimage_json TEXT
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_window_active
+    ON execution_windows(task_id)
+    WHERE status IN ('executing_action', 'applying');
+
 CREATE TABLE IF NOT EXISTS audit_events (
     event_id TEXT PRIMARY KEY,
     task_id TEXT NOT NULL REFERENCES tasks(task_id),
@@ -67,7 +72,8 @@ CREATE TABLE IF NOT EXISTS audit_events (
 
 
 def connect(path: str | Path) -> sqlite3.Connection:
-    conn = sqlite3.connect(path)
+    conn = sqlite3.connect(path, timeout=30.0)
+    conn.isolation_level = None
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(_SCHEMA)
     return conn

@@ -7,6 +7,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from guardedcoder.persist.txn import write_txn
+
 _KEY_SHAPED = re.compile(r"sk-[A-Za-z0-9_-]+")
 
 
@@ -22,13 +24,14 @@ def _redact(value: Any) -> Any:
 
 def append_audit(conn: sqlite3.Connection, task_id: str, event: dict) -> None:
     payload = json.dumps(_redact(event), ensure_ascii=False)
-    conn.execute(
-        "INSERT INTO audit_events (event_id, task_id, payload_json, created_at) "
-        "VALUES (?, ?, ?, ?)",
-        (
-            str(uuid.uuid4()),
-            task_id,
-            payload,
-            datetime.now(timezone.utc).isoformat(),
-        ),
-    )
+    with write_txn(conn):
+        conn.execute(
+            "INSERT INTO audit_events (event_id, task_id, payload_json, created_at) "
+            "VALUES (?, ?, ?, ?)",
+            (
+                str(uuid.uuid4()),
+                task_id,
+                payload,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
