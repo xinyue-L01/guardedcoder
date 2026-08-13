@@ -62,7 +62,7 @@ Human edits: <none|简述>
 | T06 | AppConfig | done | a09cbdb30c1e8be9ccde85528c04a2f406be29c9 | WT-B / PR-B |
 | T07 | TOML 校验 | done | 2b882a53bc33b517a514e923c0f8d3f94ff9a155 | WT-B / PR-B |
 | T08 | 信封合成 | done | d7658c0e66cefeffddda3ce44af088437729dfda | WT-B / PR-B |
-| T09 | 配置不能放宽硬规则 | pending | — | WT-B / PR-B |
+| T09 | 配置不能放宽硬规则 | done | 840129835f79aa89e0ed95e15b7df337f02a99ba | WT-B / PR-B |
 | T10 | MockLLM | pending | — | WT-C / PR-C |
 | T11 | OpenAICompatibleLLM | pending | — | WT-C / PR-C |
 | T12 | 路径围栏 | pending | — | WT-D / PR-D |
@@ -452,6 +452,17 @@ python -m piptools compile --generate-hashes --allow-unsafe --index-url https://
 ---
 
 ## Task 09: 配置不能放宽硬规则
+
+**状态：** done · 实现 commit `840129835f79aa89e0ed95e15b7df337f02a99ba`
+
+- [x] 写失败测试
+- [x] 跑红灯命令，记录预期失败
+- [x] 最小实现
+- [x] 跑绿灯命令
+- [x] 重构并回归测试
+- [x] spec 合规审查（Critical 必修）
+- [x] 代码质量审查（Critical 必修）
+- [x] commit（含 Subagent / Human edits）+ 追加 `AGENT_LOG.md` + 更新本 PLAN 状态栏
 
 **依赖：** T08。路径：`governance/hard_rules.py`, `tests/test_config_hard_rules.py`  
 失败测试：`pip`+`install` 或 push/publish profile → ConfigError。

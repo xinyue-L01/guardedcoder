@@ -151,6 +151,19 @@
 - **绿灯：** 修复后 `test_synthesize` 7 passed；全量 **37 passed**。
 - **实现 commit：** `012bd06d35c975682536e9239ae98993c7a611b4`；覆盖校验 `d7658c0e66cefeffddda3ce44af088437729dfda`
 
+---
+
+## 2026-08-14 · T09 配置不能放宽硬规则（WT-B）
+
+- **Task：** T09（WT-B / `feat/b-config`）。未执行 T12。未合并 PR-B。
+- **Implementer：** `9c5b16dc-f902-4bc4-af5f-76b5446bdd85`
+- **Spec reviewer：** `87f9be7e-8aac-4f8b-8a05-d9a6e50344da` → Approved。Minor：`pip` 精确 token，不覆盖 `pip3`/`pip.exe`。
+- **Quality reviewer：** `325ab50d-71c0-4d29-b58f-f3f708bae69f` → Approved；Critical/Important/Minor = 0。
+- **Human edits：** none
+- **红灯：** `ModuleNotFoundError: No module named 'guardedcoder.governance'`
+- **绿灯：** `test_config_hard_rules` 7 passed；全量 **44 passed**。
+- **实现 commit：** `840129835f79aa89e0ed95e15b7df337f02a99ba`
+
 
 
 
