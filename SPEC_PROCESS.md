@@ -216,7 +216,7 @@
 | 4 | 架构、数据流、数据模型、依赖 | 副作用入口/顺序/SQLite 补丁后整体签字 |
 | 5 | NFR、威胁模型、分发、验收、风险 | endpoint/隐私/供应链补丁后整体签字 |
 | 审查补丁 | 声明式配置、技术冻结、GitHub、工具角色 | SPEC 已签字 |
-| PLAN | writing-plans 生成；G0 已签署并进入 G1 | G0 passed（Commit —）；G1 进行中 |
+| PLAN | writing-plans 生成；G0 已签署；G1 基线已提交 | G0 passed（Commit —）；G1 done `53075f05fc5097655d7f5b2f1113b2fbc884da4c`；无 origin |
 
 ---
 
@@ -265,7 +265,7 @@ PLAN Status：G0 = passed，Commit = `—`。**G0 已签署，进入 G1。** 正
 
 ## 8. 下一步（尚未执行）
 
-1. 完成本次 **G1** 基线提交（无 origin 直至真实 GitHub 仓库存在）。
-2. G1 完成后正式 T01（按修订后的 setuptools / pytest / 锁文件规则在正式仓重做，不粘贴 disposable 代码）。**本轮 G1 不执行 T01。**
+1. G1 已完成（基线 `53075f05fc5097655d7f5b2f1113b2fbc884da4c`，无 origin）。
+2. 下一实现 task：**T01**（正式仓按修订规则重做，不粘贴 disposable 代码）。**本 G1 回合未执行 T01。**
 3. 按 worktree 从最新已合并 main 创建；每 task 更新 AGENT_LOG 与 PLAN 状态栏。
 4. 全部实现与 T43 后走 T42 文档审计，再 **G2** 人工交付。

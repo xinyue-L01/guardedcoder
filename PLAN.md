@@ -15,7 +15,7 @@
 - TDD：先红后绿；保存红灯证据。
 - 每个实现 task 一个新鲜 subagent；commit/PR 注明来源与人工修改。
 - 每个大模块一个 worktree / PR；**worktree 必须从依赖 PR 已合并的最新 `main` 创建**，禁止一次性从旧 base 开全部 worktree。
-- **G0 已由产品负责人最终签署。** 本文件记录 G1 基线。G1 完成前禁止正式 T01。
+- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。下一实现 task 为 T01；本 G1 回合不执行 T01。
 - API Key 只进 keyring；不进 TOML/Git/日志/状态/记忆/Mock。
 - 五工具 + `finish`；不为演示新增 network/push/publish。
 - 完整 patch 禁止静默截断。
@@ -53,7 +53,7 @@ Human edits: <none|简述>
 | ID | 模块 | Status | Commit | PR / worktree |
 |---|---|---|---|---|
 | G0 | 冷启动（仓库外试做 T01+T02） | passed | — | G0 已签署；disposable 未进正式仓 |
-| G1 | Git / GitHub / AGENT_LOG 基线 | pending | — | 正式仓 main |
+| G1 | Git / GitHub / AGENT_LOG 基线 | done | 53075f05fc5097655d7f5b2f1113b2fbc884da4c | 正式仓 main；无 origin |
 | T01 | 工程骨架 + pip-tools | pending | — | WT-A / PR-A |
 | T02 | 状态枚举 | pending | — | WT-A / PR-A |
 | T03 | 动作 schema | pending | — | WT-A / PR-A |
@@ -281,16 +281,16 @@ Status: passed | Commit: —
 
 **步骤：**
 
-- [ ] `git init`（仅此 gate；PLAN 生成时不要执行）
-- [ ] 写安全 `.gitignore`
-- [ ] 写 `AGENT_LOG.md` 模板 + 已发生过程摘要
-- [ ] 提交 SPEC.md / PLAN.md / SPEC_PROCESS.md / .gitignore / AGENT_LOG.md 基线
-- [ ] 远程：要么创建**真实** GitHub 仓库并设置 `origin` 为该真实 URL；要么在真实仓库创建前**保持无 origin**。**禁止写入虚假 / 占位 URL**（含 README、git remote、AGENT_LOG）。真实 URL 仅在仓库实际存在后写入。
-- [ ] 确认后续 worktree 规则写入本 PLAN（已写）并在 AGENT_LOG 重复
+- [x] `git init -b main`
+- [x] 写安全 `.gitignore`
+- [x] 写 `AGENT_LOG.md` 模板 + 已发生过程摘要
+- [x] 提交 SPEC.md / PLAN.md / SPEC_PROCESS.md / .gitignore / AGENT_LOG.md 基线
+- [x] 真实 GitHub 仓库尚未创建 → **保持无 origin**（未写入虚假 URL）
+- [x] 后续 worktree 规则已在 PLAN；AGENT_LOG 已记录
 
-**绿灯：** `git log -1` 有基线 commit；`AGENT_LOG.md` 存在。Status/hash 填入本表。**仍不得把 T01–T43 标 done。**
+**绿灯：** 基线 commit `53075f05fc5097655d7f5b2f1113b2fbc884da4c`。**仍不得把 T01–T43 标 done。** 本回合不执行 T01。
 
-Status: pending | Commit: —
+Status: done | Commit: 53075f05fc5097655d7f5b2f1113b2fbc884da4c
 
 ---
 

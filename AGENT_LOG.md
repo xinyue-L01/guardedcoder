@@ -15,4 +15,6 @@
 - **人工干预：** 产品负责人**已最终签署 G0 通过**。授权执行 G1。本步不执行 T01。
 - **教训：** 冷启动必须能真正跑红绿；PLAN 对 pyproject/Windows 测试命令/锁文件 index 写含糊时，陌生 agent 会停或猜。G0 允许的网络必须白名单到 PyPI，避免误连 LLM。
 
-后续每条实现日志须含：红灯/绿灯证据、subagent、人工修改、两阶段评审。
+- **Git：** 默认分支 `main`；基线 commit `53075f05fc5097655d7f5b2f1113b2fbc884da4c`。未设置 origin（无真实 GitHub 仓库则禁止虚假 URL）。
+- **自查：** 正式仓无 pyproject、src 业务代码、测试、锁文件；未从 disposable 复制实现。
+
