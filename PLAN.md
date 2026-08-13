@@ -87,7 +87,7 @@ Human edits: <none|简述>
 | T31 | 脏树拒绝、创建/discard 归属 | pending | — | WT-I / PR-I |
 | T32 | 完整 patch artifact | pending | — | WT-I / PR-I |
 | T33 | apply-back 窗口 | pending | — | WT-I / PR-I |
-| T34 | 记忆写入检索 + CLI 函数 | pending | — | WT-J / PR-J |
+| T34 | 记忆写入检索 + CLI 函数 | done | 932addac7c9f9de4fe37b920a63e3174e0b509bd | WT-J / PR-J |
 | T35 | 不授权、summary、100/90 清理 | pending | — | WT-J / PR-J |
 | T36 | argparse CLI | pending | — | WT-K / PR-K |
 | T37 | config / auth | pending | — | WT-K / PR-K |

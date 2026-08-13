@@ -376,6 +376,19 @@
 - **绿灯（裁决后）：** 全量 **180 passed, 2 skipped**。
 - **推送：** `feat/e-persist`（不合并、不执行 T21）。
 
+---
+
+## 2026-08-14 · T34 记忆存储、检索、CLI 函数
+
+- **Task：** T34（WT-J / `feat/j-memory`）。未执行 T35。未合并 PR-J。
+- **Implementer：** `72ee70f4-8670-48bc-a95c-78459cd619e0`（续跑 inherited uncommitted）
+- **Spec reviewer：** 初审 `7d8b0783-1dfa-4e3e-a2ae-dcfdc732d840` Needs fixes（Important：`paths`/`tags` 裸 `str` 拆字）；复审 `5830fdda-2f6d-45e8-a950-9e50e57e161b` → Spec ✅ C/I=0
+- **Quality reviewer：** 初审 `671c7c58-7678-4058-beb4-9685c555d1de` Needs fixes（Important×4：schema/`executescript`、私有 normalize、绝对路径、检索测试锁）；复审 `fefc808e-a3ab-4ffa-b62f-59fd071d52f6` → Approved C/I=0
+- **Human edits：** none
+- **红灯：** inherited `.superpowers/sdd/t34-red.txt`：`ModuleNotFoundError: No module named 'guardedcoder.memory'`。修复后补测红灯：`memory_records` 不在 `connect()` schema；`paths="tests"` 未 TypeError；`C:/secrets` 未拒。
+- **绿灯：** `tests/test_memory.py` 11 passed；全量 **191 passed, 2 skipped**
+- **实现 commit：** `932addac7c9f9de4fe37b920a63e3174e0b509bd`
+
 
 
 
