@@ -139,14 +139,39 @@ def _authorize(
 def _consume_claim(conn: sqlite3.Connection, claim_id: str | None) -> None:
     if claim_id is None:
         return
-    with write_txn(conn):
-        cur = conn.execute(
-            "UPDATE recovered_attempt_claims SET consumed = 1 "
-            "WHERE claim_id = ? AND consumed = 0",
-            (claim_id,),
-        )
-        if cur.rowcount != 1:
-            raise UnauthorizedError("claim is missing, stale, or replayed")
+    cur = conn.execute(
+        "UPDATE recovered_attempt_claims SET consumed = 1 "
+        "WHERE claim_id = ? AND consumed = 0",
+        (claim_id,),
+    )
+    if cur.rowcount != 1:
+        raise UnauthorizedError("claim is missing, stale, or replayed")
+
+
+def _apply_authorized(
+    conn: sqlite3.Connection,
+    window: sqlite3.Row | tuple,
+    action: ApplyPatchAction,
+    worktree: Path,
+    claim_id: str | None,
+    envelope: Envelope | None,
+) -> Observation:
+    preimage = json.loads(window[5]) if window[5] else None
+    postimage = json.loads(window[6]) if window[6] else None
+    if _matches(worktree, postimage):
+        _consume_claim(conn, claim_id)
+        return Observation(body="already applied", truncated=False)
+    if not _matches(worktree, preimage):
+        raise UnauthorizedError("pre/post image mismatch")
+    authorized = set(preimage)
+    if any(rel not in authorized for rel in patch_paths(action.diff)):
+        raise UnauthorizedError("patch paths escape authorized image")
+    allow_delete = envelope.allow_delete if envelope is not None else False
+    observation = apply_patch(
+        worktree, action.diff, allow_delete=allow_delete
+    ).observation
+    _consume_claim(conn, claim_id)
+    return observation
 
 
 def execute(
@@ -172,24 +197,10 @@ def execute(
             envelope=envelope,
             task_dir=task_dir,
         )
-
-    if isinstance(action, ApplyPatchAction):
-        preimage = json.loads(window[5]) if window[5] else None
-        postimage = json.loads(window[6]) if window[6] else None
-        if _matches(worktree, postimage):
-            _consume_claim(conn, claim_id)
-            return Observation(body="already applied", truncated=False)
-        if not _matches(worktree, preimage):
-            raise UnauthorizedError("pre/post image mismatch")
-        authorized = set(preimage)
-        if any(rel not in authorized for rel in patch_paths(action.diff)):
-            raise UnauthorizedError("patch paths escape authorized image")
-        allow_delete = envelope.allow_delete if envelope is not None else False
-        observation = apply_patch(
-            worktree, action.diff, allow_delete=allow_delete
-        ).observation
-        _consume_claim(conn, claim_id)
-        return observation
+        if isinstance(action, ApplyPatchAction):
+            return _apply_authorized(
+                conn, window, action, worktree, claim_id, envelope
+            )
 
     if isinstance(action, ListDirAction):
         return list_dir(worktree, action.path)

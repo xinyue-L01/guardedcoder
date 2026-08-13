@@ -15,7 +15,7 @@ from guardedcoder.persist.claim import ClaimConflictError, claim_recovered_attem
 from guardedcoder.persist.db import connect
 from guardedcoder.persist.permit import consume_permit_and_open_window, create_permit
 from guardedcoder.persist.recover import RecoverDecision, recover
-from guardedcoder.persist.store import create_task
+from guardedcoder.persist.store import create_task, update_task
 from guardedcoder.tools import executor
 from guardedcoder.tools.executor import execute
 
@@ -222,6 +222,34 @@ def test_4_stale_or_wrong_claim_is_rejected(tmp_path: Path) -> None:
             task_id="t1",
             permit_id=permit_id,
             window_id="other-window",
+            action=ApplyPatchAction(action="apply_patch", diff=_diff("before", "after")),
+            worktree=ws,
+            claim_id=claim_id,
+        )
+    assert (ws / "a.txt").read_bytes() == b"before\n"
+
+
+def test_stale_revision_claim_is_rejected(tmp_path: Path) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    conn = connect(tmp_path / "g.db")
+    _create(conn, ws)
+    permit_id, window_id = _open_patch(conn, ws)
+    _mark_started(conn, window_id)
+    claim_id = claim_recovered_attempt(
+        conn,
+        task_id="t1",
+        window_id=window_id,
+        expected_revision=3,
+        attempt_id="1",
+    )
+    update_task(conn, "t1", expected_revision=3, remaining_steps=9)
+    with pytest.raises(UnauthorizedError):
+        execute(
+            conn,
+            task_id="t1",
+            permit_id=permit_id,
+            window_id=window_id,
             action=ApplyPatchAction(action="apply_patch", diff=_diff("before", "after")),
             worktree=ws,
             claim_id=claim_id,
