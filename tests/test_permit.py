@@ -1,0 +1,311 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import sqlite3
+
+import pytest
+
+from guardedcoder.errors import PermitConsumedError, PermitInvalidError, StaleRevisionError
+from guardedcoder.persist.db import connect
+from guardedcoder.persist.permit import consume_permit_and_open_window, create_permit
+from guardedcoder.persist.store import create_task, update_task
+
+
+class SpyExecutor:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def execute(self, *args: object, **kwargs: object) -> None:
+        self.calls += 1
+        raise AssertionError("executor must not be invoked")
+
+
+def _create(conn: sqlite3.Connection, *, remaining_steps: int = 10) -> None:
+    create_task(
+        conn,
+        task_id="t1",
+        run_state="running",
+        artifact_state="worktree_present",
+        repo_path="/repo",
+        base_commit="abc",
+        worktree_identity="wt-1",
+        envelope_hash="env-1",
+        remaining_steps=remaining_steps,
+    )
+
+
+def _task(conn: sqlite3.Connection) -> sqlite3.Row:
+    conn.row_factory = sqlite3.Row
+    row = conn.execute("SELECT * FROM tasks WHERE task_id = ?", ("t1",)).fetchone()
+    assert row is not None
+    return row
+
+
+def test_create_permit_decrements_remaining_steps(tmp_path) -> None:
+    conn = connect(tmp_path / "g.db")
+    _create(conn)
+    spy = SpyExecutor()
+    permit_id = create_permit(
+        conn,
+        task_id="t1",
+        action_id="a1",
+        fingerprint="fp1",
+        envelope_hash="env-1",
+        expected_revision=1,
+        executor=spy,
+    )
+    task = _task(conn)
+    assert task["remaining_steps"] == 9
+    assert task["state_revision"] == 2
+    row = conn.execute(
+        "SELECT * FROM permits WHERE permit_id = ?", (permit_id,)
+    ).fetchone()
+    assert row["consumed"] == 0
+    assert row["action_id"] == "a1"
+    assert row["fingerprint"] == "fp1"
+    assert row["envelope_hash"] == "env-1"
+    assert row["task_id"] == "t1"
+    assert spy.calls == 0
+
+
+def test_create_and_consume_never_call_executor(tmp_path) -> None:
+    conn = connect(tmp_path / "g.db")
+    _create(conn)
+    spy = SpyExecutor()
+    permit_id = create_permit(
+        conn,
+        task_id="t1",
+        action_id="a1",
+        fingerprint="fp1",
+        envelope_hash="env-1",
+        expected_revision=1,
+        executor=spy,
+    )
+    consume_permit_and_open_window(
+        conn,
+        task_id="t1",
+        permit_id=permit_id,
+        expected_revision=2,
+        action_kind="run_command",
+        executor=spy,
+    )
+    assert spy.calls == 0
+
+
+def test_consume_opens_window_and_sets_executing_action(tmp_path) -> None:
+    conn = connect(tmp_path / "g.db")
+    _create(conn)
+    permit_id = create_permit(
+        conn,
+        task_id="t1",
+        action_id="a1",
+        fingerprint="fp1",
+        envelope_hash="env-1",
+        expected_revision=1,
+    )
+    window_id = consume_permit_and_open_window(
+        conn,
+        task_id="t1",
+        permit_id=permit_id,
+        expected_revision=2,
+        action_kind="apply_patch",
+        preimage={
+            "a.txt": {
+                "exists": True,
+                "sha256": hashlib.sha256(b"x").hexdigest(),
+            }
+        },
+        postimage={
+            "a.txt": {
+                "exists": True,
+                "sha256": hashlib.sha256(b"y").hexdigest(),
+            }
+        },
+    )
+    task = _task(conn)
+    assert task["run_state"] == "executing_action"
+    assert task["state_revision"] == 3
+    permit = conn.execute(
+        "SELECT consumed FROM permits WHERE permit_id = ?", (permit_id,)
+    ).fetchone()
+    assert permit[0] == 1
+    win = conn.execute(
+        "SELECT * FROM execution_windows WHERE window_id = ?", (window_id,)
+    ).fetchone()
+    assert win["permit_id"] == permit_id
+    assert win["action_kind"] == "apply_patch"
+    assert win["status"] == "executing_action"
+    stored_pre = json.loads(win["preimage_json"])
+    stored_post = json.loads(win["postimage_json"])
+    assert stored_pre["a.txt"]["exists"] is True
+    assert stored_pre["a.txt"]["sha256"] == hashlib.sha256(b"x").hexdigest()
+    assert stored_post["a.txt"]["sha256"] == hashlib.sha256(b"y").hexdigest()
+    assert win["opened_revision"] == 3
+    assert win["source_run_state"] == "running"
+
+
+def test_second_consume_raises_permit_consumed(tmp_path) -> None:
+    conn = connect(tmp_path / "g.db")
+    _create(conn)
+    permit_id = create_permit(
+        conn,
+        task_id="t1",
+        action_id="a1",
+        fingerprint="fp1",
+        envelope_hash="env-1",
+        expected_revision=1,
+    )
+    consume_permit_and_open_window(
+        conn,
+        task_id="t1",
+        permit_id=permit_id,
+        expected_revision=2,
+        action_kind="run_command",
+    )
+    before = dict(_task(conn))
+    windows = conn.execute("SELECT COUNT(*) FROM execution_windows").fetchone()[0]
+    with pytest.raises(PermitConsumedError):
+        consume_permit_and_open_window(
+            conn,
+            task_id="t1",
+            permit_id=permit_id,
+            expected_revision=3,
+            action_kind="run_command",
+        )
+    after = dict(_task(conn))
+    assert after == before
+    assert conn.execute("SELECT COUNT(*) FROM execution_windows").fetchone()[0] == windows
+
+
+def test_stale_revision_create_no_side_effects(tmp_path) -> None:
+    conn = connect(tmp_path / "g.db")
+    _create(conn)
+    before = dict(_task(conn))
+    with pytest.raises(StaleRevisionError):
+        create_permit(
+            conn,
+            task_id="t1",
+            action_id="a1",
+            fingerprint="fp1",
+            envelope_hash="env-1",
+            expected_revision=99,
+        )
+    assert dict(_task(conn)) == before
+    assert conn.execute("SELECT COUNT(*) FROM permits").fetchone()[0] == 0
+
+
+def test_stale_revision_consume_no_side_effects(tmp_path) -> None:
+    conn = connect(tmp_path / "g.db")
+    _create(conn)
+    permit_id = create_permit(
+        conn,
+        task_id="t1",
+        action_id="a1",
+        fingerprint="fp1",
+        envelope_hash="env-1",
+        expected_revision=1,
+    )
+    before_task = dict(_task(conn))
+    with pytest.raises((StaleRevisionError, PermitInvalidError)):
+        consume_permit_and_open_window(
+            conn,
+            task_id="t1",
+            permit_id=permit_id,
+            expected_revision=99,
+            action_kind="run_command",
+        )
+    assert dict(_task(conn)) == before_task
+    consumed = conn.execute(
+        "SELECT consumed FROM permits WHERE permit_id = ?", (permit_id,)
+    ).fetchone()[0]
+    assert consumed == 0
+    assert conn.execute("SELECT COUNT(*) FROM execution_windows").fetchone()[0] == 0
+
+
+def test_second_unconsumed_permit_integrity_error(tmp_path) -> None:
+    conn = connect(tmp_path / "g.db")
+    _create(conn, remaining_steps=5)
+    create_permit(
+        conn,
+        task_id="t1",
+        action_id="a1",
+        fingerprint="fp1",
+        envelope_hash="env-1",
+        expected_revision=1,
+    )
+    remaining = _task(conn)["remaining_steps"]
+    with pytest.raises(sqlite3.IntegrityError):
+        create_permit(
+            conn,
+            task_id="t1",
+            action_id="a2",
+            fingerprint="fp2",
+            envelope_hash="env-1",
+            expected_revision=2,
+        )
+    assert _task(conn)["remaining_steps"] == remaining
+    assert conn.execute("SELECT COUNT(*) FROM permits").fetchone()[0] == 1
+
+
+def test_create_permit_rejects_mismatched_envelope_hash(tmp_path) -> None:
+    conn = connect(tmp_path / "g.db")
+    _create(conn)
+    before = dict(_task(conn))
+    with pytest.raises(PermitInvalidError):
+        create_permit(
+            conn,
+            task_id="t1",
+            action_id="a1",
+            fingerprint="fp1",
+            envelope_hash="env-other",
+            expected_revision=1,
+        )
+    assert dict(_task(conn)) == before
+    assert conn.execute("SELECT COUNT(*) FROM permits").fetchone()[0] == 0
+
+
+def test_consume_fails_after_envelope_hash_update(tmp_path) -> None:
+    conn = connect(tmp_path / "g.db")
+    _create(conn)
+    permit_id = create_permit(
+        conn,
+        task_id="t1",
+        action_id="a1",
+        fingerprint="fp1",
+        envelope_hash="env-1",
+        expected_revision=1,
+    )
+    update_task(conn, "t1", 2, envelope_hash="env-2")
+    new_revision = _task(conn)["state_revision"]
+    with pytest.raises(PermitInvalidError):
+        consume_permit_and_open_window(
+            conn,
+            task_id="t1",
+            permit_id=permit_id,
+            expected_revision=new_revision,
+            action_kind="run_command",
+        )
+    task = _task(conn)
+    assert task["run_state"] != "executing_action"
+    consumed = conn.execute(
+        "SELECT consumed FROM permits WHERE permit_id = ?", (permit_id,)
+    ).fetchone()[0]
+    assert consumed == 0
+    assert conn.execute("SELECT COUNT(*) FROM execution_windows").fetchone()[0] == 0
+
+
+def test_create_permit_fails_when_budget_exhausted(tmp_path) -> None:
+    conn = connect(tmp_path / "g.db")
+    _create(conn, remaining_steps=0)
+    with pytest.raises(ValueError):
+        create_permit(
+            conn,
+            task_id="t1",
+            action_id="a1",
+            fingerprint="fp1",
+            envelope_hash="env-1",
+            expected_revision=1,
+        )
+    assert _task(conn)["remaining_steps"] == 0
+    assert conn.execute("SELECT COUNT(*) FROM permits").fetchone()[0] == 0

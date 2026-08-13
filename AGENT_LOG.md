@@ -257,11 +257,124 @@
 - **绿灯：** 全量 **111 passed, 1 skipped**。
 - **Follow-up commit：** `d10f324e91eb7b7dca70a7ae1f5e63d0f56ea61e`
 
+---
 
+## 2026-08-14 · T16 SQLite、Task、AuditEvent 脱敏（WT-E）
 
+- **Task：** T16（WT-E / `feat/e-persist`）。未执行 T17。未合并 PR-E。
+- **Implementer：** Cursor generalPurpose `d1817fc4-3828-48dc-9e5a-0e9bf6896d55`
+- **Spec reviewer：** `de6ecf7c-aaac-48ba-ae68-8ba73a9a183a` → C/I=0
+- **Quality reviewer：** `372b061d-c105-4fbc-b3b3-43a7f40d3719` → C/I=0
+- **Human edits：** none
+- **红灯：** collection `ImportError`（缺 persist 模块 / `StaleRevisionError`）
+- **绿灯：** `test_db` 7 + `test_audit` 1；全量 **119 passed, 1 skipped**
+- **实现 commit：** `3006440dc5989058a3609aeb08aaf101553e134c`
 
+---
 
+## 2026-08-14 · T17 M8 创建并消费 permit（WT-E）
 
+- **Task：** T17（WT-E / `feat/e-persist`）。未执行 T18。未合并 PR-E。
+- **Implementer：** `015c6a89-3990-47a8-b567-f0b188f1a629`
+- **Spec reviewer：** `0b084675-65e2-44eb-8f13-77fc63971073` → C/I=0
+- **Quality reviewer：** `2e249fa2-0541-4c66-b944-eaa2e3797ad1` → C/I=0。Minor：缺 task 误报 StaleRevision；缺 permit 用 LookupError。
+- **Human edits：** none
+- **红灯：** 缺 `persist.permit` / `PermitConsumedError`
+- **绿灯：** `test_permit` 8 passed；全量 **127 passed, 1 skipped**
+- **实现 commit：** `3eaed9d70322e1f8930eee7fc303f61915573d72`
+
+---
+
+## 2026-08-14 · T18 apply_patch 窗口恢复（WT-E）
+
+- **Task：** T18（WT-E / `feat/e-persist`）。未执行 T19。未合并 PR-E。
+- **Implementer：** `5bdf7d88-ec5b-40f8-b514-682f0475a18a`
+- **Spec+quality reviewer：** `73e7ae20-84fe-47ea-8b73-1eeaadc157f4` → C/I=0
+- **Human edits：** none
+- **红灯：** 缺 `persist.recover`
+- **绿灯：** `test_recover_patch` 7；全量 **134 passed, 1 skipped**
+- **实现 commit：** `45b03c76b328e55067d0028ccd680aad54b4c130`
+
+---
+
+## 2026-08-14 · T19 run_command 窗口 fail-closed（WT-E）
+
+- **Task：** T19（WT-E / `feat/e-persist`）。未执行 T20。未合并 PR-E。
+- **Implementer：** `614d8405-85c8-4cb7-b60c-585ff09eee45`
+- **Spec+quality reviewer：** `7e21962e-56b7-48e2-a596-c5d32317bff1` → C/I=0
+- **Human edits：** none
+- **红灯：** run_command 仍 NotImplementedError / 缺 test_recover_command
+- **绿灯：** `test_recover_command` 2；全量 **136 passed, 1 skipped**
+- **实现 commit：** `7b8bd894561645935f042eb6ad3aaec4296ee326`
+
+---
+
+## 2026-08-14 · T20 审批一次性（WT-E）
+
+- **Task：** T20（WT-E / `feat/e-persist`）。未执行 T21。未合并 PR-E。
+- **Implementer：** `1108d6d4-be4a-490d-845b-ffab79a02d6e`
+- **Spec+quality reviewer：** `d4a181de-fe9d-4b42-973e-455d2492c5d2` → C/I=0
+- **Human edits：** none
+- **红灯：** 缺 `persist.approval` / `ApprovalError`
+- **绿灯：** `test_approval` 5；全量 **141 passed, 1 skipped**
+- **实现 commit：** `a15bd72e41c6dd681e79553088267f3aafb62f43`
+
+---
+
+## 2026-08-14 · PR-E follow-up（permit 绑定 envelope）
+
+- **性质：** branch-level Important。不执行 T21；**不改 T17 已完成状态**（T17 实现 commit 仍为 `3eaed9d70322e1f8930eee7fc303f61915573d72`）。
+- **Implementer：** `87f49a9b-1a12-43c7-a87e-1a0b427e9982`
+- **Re-review：** `e6a43fb6-b91a-4fc7-a756-1389962026e8` → C/I=0
+- **Human edits：** none
+- **红灯：** 改信封后仍能 consume 旧 permit
+- **绿灯：** 全量 **143 passed, 1 skipped**
+- **Follow-up commit：** `06486647a15c715fbc403937dfa06cd6db0ab054`
+
+---
+
+## 2026-08-14 · PR-E 独立对抗审查（Codex 反例）
+
+- **性质：** 不合并、不执行 T21。systematic-debugging：先写失败测试并记录红灯，再最小修复。
+- **红灯（修复前）：** `tests/test_adversarial_*.py` **16 failed, 1 passed, 1 skipped**（见 `.superpowers/sdd/adversarial-red.txt`，未入库）。
+  1. stale permit：envelope 不变但 revision 变后仍能 consume（DID NOT RAISE）
+  2. 双窗口：executing_action 下仍能 create 第二 permit
+  3. 跨进程：create_task/insert_pending/approve 关闭重连后行为丢失
+  4. 双连接 approve：成功数 0（无 commit）；revision 变更因无持久化误报 StaleRevision
+  5. 恢复 `../` 逃逸：run_state 被标成 running
+  6. 全文入库：hash 标记恢复被当成 error
+  7. pending_action_id / verifying：TypeError 或 run_state 被改成 executing_action
+- **修复 commits：**
+  - `97ee8b7` 事务所有权 + 原子审批
+  - `97223ab` stale permit / 单窗口 / pending 绑定 / verifying
+  - `a09f0a8` SHA-256 镜像 + 围栏
+  - `38a38a2` HITL 指纹与 worktree_identity 恢复
+  - `92c5717` 已消费 pending 不得跨 revision 发 permit；recover 单事务
+  - `357d9a1` preimage 重试认领 revision；流式哈希
+- **Spec reviewer：** `41fc13cf` 初审 C3/I1；复审 `59098adb` → **C/I=0**
+- **并发/恢复 quality reviewer（独立，未与 spec 合并）：** `8b1b7a83` → `8db0d042` → `6c36180f` → `56969f88`。终态 **C=0**。剩余 I=2（新 revision 再次 recover 认领；pre/post 路径集合不必相同）当时由 controller 按签字语义驳回。
+- **Human edits：** none
+- **绿灯：** 全量 **164 passed, 2 skipped**
+- **后续推翻：** 上述 controller 驳回不成立。Codex 第二轮反例证明：`preimage={a}`/`postimage={b}` 即使 b 匹配也不得 succeeded；全 pre 后再用新 revision recover 不得再次认领同一窗口。见下条。
+
+---
+
+## 2026-08-14 · PR-E 第二轮对抗（Codex 反例推翻驳回）
+
+- **性质：** 不合并、不执行 T21。此前 quality I=2 驳回被 Codex 反例推翻，不得由 controller 再驳 Important。
+- **四反例测试：** `tests/test_adversarial_round2.py`（disjoint keys、新 revision 不得重认领、succeeded 不得复活、stale insert_pending 零行）。
+- **修复 commits：**
+  - `719edd3` 同路径集 image、RetryableSameAttempt 不 bump revision、insert_pending 同事务校验、`request_approval`
+  - `c2a5a9a` 非法 source_run_state / 损坏 JSON → error；旧库 ALTER
+  - `145e7a9` HITL `awaiting_approval` 窗口可 recorded_success；归一化撞键拒绝；`update_task` 不得切入 awaiting_approval
+- **Spec reviewer：** `7182cbd2` 对 `c2a5a9a`：**C=2 I=2**。C1 HITL 恒 error、C2 撞键 last-wins 已修进 `145e7a9`；I1 两段审批已堵。
+- **并发/恢复 reviewer（独立）：** `9345686e` 对 `c2a5a9a`：**C=1 I=3**。C1 与 spec C1 同因，已修。I1 双 `retryable_same_attempt`、I2 无重驱动原语 **未修**。
+- **暂停（交人工/Codex）：** I1/I2 与签署语义冲突：全 pre 必须保持 task/window 不变且 recover 不得用 revision 伪装 claim；真正一次性 retry claim/进程锁要在 T22 接 M5 前完成。Controller **不驳回** 这两条 Important，也不在 recover 里做假 claim。未推送。
+- **绿灯（暂停时）：** 全量 **180 passed, 2 skipped**（`145e7a9`）。
+- **Human edits：** 产品负责人裁决 C1/I1/I2；未改 persist 实现代码。
+- **人工裁决：** C1 接受为已修复。I1 不作为 PR-E blocker：`retryable_same_attempt` 是非授权检查结果，多调用者得到相同结果不代表执行权；`recover()` 必须继续保持 task/window 不变且不得调 executor。I2 记录为后续强制集成要求，不标 won't fix，不改 PR-E 代码。PLAN T24（依赖 T18/T19）加入硬门槛：执行恢复补丁前须独立原子排他 retry claim（绑定 task/window/state_revision/attempt）；M5 无有效 claim 必须拒绝；claim 不可重放；验收含双连接/进程仅一个成功、无 claim 无副作用、崩溃后重核 pre/post、旧 claim 不可重放。该要求完成前 T24/T28 不得标 done。本轮只更新 PLAN 与 AGENT_LOG；不执行 T21。
+- **绿灯（裁决后）：** 全量 **180 passed, 2 skipped**。
+- **推送：** `feat/e-persist`（不合并、不执行 T21）。
 
 
 
