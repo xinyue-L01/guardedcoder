@@ -15,7 +15,7 @@
 - TDD：先红后绿；保存红灯证据。
 - 每个实现 task 一个新鲜 subagent；commit/PR 注明来源与人工修改。
 - 每个大模块一个 worktree / PR；**worktree 必须从依赖 PR 已合并的最新 `main` 创建**，禁止一次性从旧 base 开全部 worktree。
-- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。下一实现 task 为 T01；本 G1 回合不执行 T01。
+- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。下一实现 task 为 T02（以状态表为准）。
 - API Key 只进 keyring；不进 TOML/Git/日志/状态/记忆/Mock。
 - 五工具 + `finish`；不为演示新增 network/push/publish。
 - 完整 patch 禁止静默截断。
@@ -53,7 +53,7 @@ Human edits: <none|简述>
 | ID | 模块 | Status | Commit | PR / worktree |
 |---|---|---|---|---|
 | G0 | 冷启动（仓库外试做 T01+T02） | passed | — | G0 已签署；disposable 未进正式仓 |
-| G1 | Git / GitHub / AGENT_LOG 基线 | done | 53075f05fc5097655d7f5b2f1113b2fbc884da4c | 正式仓 main；无 origin |
+| G1 | Git / GitHub / AGENT_LOG 基线 | done | 53075f05fc5097655d7f5b2f1113b2fbc884da4c | 正式仓 main；origin https://github.com/xinyue-L01/guardedcoder |
 | T01 | 工程骨架 + pip-tools | done | 0421cc9463e304c1dadfd293aaab253108f8a4d5 | WT-A `.worktrees/wt-a-foundation`；已推送；Draft PR 未创建（gh 未安装） |
 | T02 | 状态枚举 | pending | — | WT-A / PR-A |
 | T03 | 动作 schema | pending | — | WT-A / PR-A |
@@ -285,7 +285,7 @@ Status: passed | Commit: —
 - [x] 写安全 `.gitignore`
 - [x] 写 `AGENT_LOG.md` 模板 + 已发生过程摘要
 - [x] 提交 SPEC.md / PLAN.md / SPEC_PROCESS.md / .gitignore / AGENT_LOG.md 基线
-- [x] 真实 GitHub 仓库尚未创建 → **保持无 origin**（未写入虚假 URL）
+- [x] 真实 GitHub origin：https://github.com/xinyue-L01/guardedcoder
 - [x] 后续 worktree 规则已在 PLAN；AGENT_LOG 已记录
 
 **绿灯：** 基线 commit `53075f05fc5097655d7f5b2f1113b2fbc884da4c`。**仍不得把 T01–T43 标 done。** 本回合不执行 T01。

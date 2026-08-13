@@ -36,3 +36,13 @@
 - **实现 commit：** `0421cc9463e304c1dadfd293aaab253108f8a4d5`（`feat: add setuptools project skeleton`）。
 - **推送：** `feat/a-foundation` → `origin/feat/a-foundation`。本机无 `gh`，**未创建** Draft PR-A（不虚构）。GitHub 手工开 PR：https://github.com/xinyue-L01/guardedcoder/pull/new/feat/a-foundation
 
+---
+
+## 2026-08-14 · T01 Codex 独立验收与仓库卫生
+
+- **Codex 独立验收：** 测试 **1 passed**；editable install 成功。
+- **发现：** `.superpowers/` 未写入 `.gitignore`，main 与 WT-A 均出现未跟踪 Superpowers 状态目录。
+- **修复：** `main` 提交 `af43e54dca4ee8d21cb124c153c769d77e701ae8`（`chore: ignore local Superpowers state`）加入 `.superpowers/`；WT-A 以 merge（非 rebase）并入 `origin/main`，未改写 T01 实现 commit `0421cc9463e304c1dadfd293aaab253108f8a4d5`。
+- **文档：** PLAN G1 备注改为真实 origin `https://github.com/xinyue-L01/guardedcoder`；下一实现 task 改为 T02（以状态表为准）。
+- **Human edits：** 产品负责人根据 Codex 独立审查下达本卫生修正；未执行 T02。
+
