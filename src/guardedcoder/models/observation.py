@@ -4,7 +4,7 @@ import re
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-_KEY_SHAPED = re.compile(r"sk-[A-Za-z0-9_-]+")
+_KEY_SHAPED = re.compile(r"(?<![A-Za-z])sk-[A-Za-z0-9_-]+")
 
 
 class Observation(BaseModel):

@@ -82,6 +82,34 @@ def test_observation_redacts_key_shaped_body() -> None:
     assert fake_key not in result.body
 
 
+def test_read_file_line_range_reads_selected_lines(tmp_path: Path) -> None:
+    (tmp_path / "lines.txt").write_text("one\ntwo\nthree\nfour\n", encoding="utf-8")
+
+    result = read_file(tmp_path, "lines.txt", start_line=2, end_line=3)
+
+    assert result.body.splitlines() == ["two", "three"]
+    assert result.truncated is False
+
+
+def test_read_file_rejects_invalid_utf8_without_file_bytes_in_cause(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "bad.dat").write_bytes(b"ok\xff")
+
+    with pytest.raises(FileToolError) as caught:
+        read_file(tmp_path, "bad.dat")
+
+    assert caught.value.__cause__ is None
+    assert "ok" not in repr(caught.value)
+    assert "\\xff" not in repr(caught.value)
+
+
+def test_observation_does_not_redact_task_filenames() -> None:
+    result = Observation(body="task-21-report.md", truncated=False)
+
+    assert result.body == "task-21-report.md"
+
+
 def test_read_file_byte_limit_holds_after_key_redaction(tmp_path: Path) -> None:
     fake_key = "sk" + "-test"
     prefix = (fake_key + "\n").encode()

@@ -73,6 +73,39 @@ def test_search_text_skips_env_files_without_leaking(tmp_path: Path) -> None:
     assert ".env" not in result.body
 
 
+def test_search_text_respects_read_paths(tmp_path: Path) -> None:
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "hit.py").write_text("needle inside\n", encoding="utf-8")
+    (tmp_path / "outside.md").write_text("needle outside\n", encoding="utf-8")
+
+    result = search_text(tmp_path, "needle", read_paths=("src",))
+
+    assert result.body == "src/hit.py:1:needle inside"
+    assert "outside.md" not in result.body
+
+
+def test_search_text_skips_git_dir_without_leaking(tmp_path: Path) -> None:
+    git = tmp_path / ".git"
+    git.mkdir()
+    (git / "config").write_text("needle secret-url\n", encoding="utf-8")
+    (tmp_path / "safe.txt").write_text("needle visible\n", encoding="utf-8")
+
+    result = search_text(tmp_path, "needle")
+
+    assert result.body == "safe.txt:1:needle visible"
+    assert ".git" not in result.body
+
+
+def test_search_text_bounds_single_line_read(tmp_path: Path) -> None:
+    (tmp_path / "huge.txt").write_text("needle " + ("x" * 200_000) + "\n", encoding="utf-8")
+
+    result = search_text(tmp_path, "needle")
+
+    assert len(result.body.encode("utf-8")) <= MAX_OUTPUT_BYTES
+    assert result.truncated is True
+
+
 def test_search_text_skips_binary_and_invalid_utf8_files(tmp_path: Path) -> None:
     (tmp_path / "binary.dat").write_bytes(b"needle\x00hidden\n")
     (tmp_path / "invalid.dat").write_bytes(b"needle\xffhidden\n")

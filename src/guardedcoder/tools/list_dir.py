@@ -21,14 +21,25 @@ def list_dir(worktree: Path, path: str) -> Observation:
         raise FileToolError("path is not a directory")
 
     try:
+        allowed = [
+            entry
+            for entry in directory.iterdir()
+            if check_path(worktree, _join_rel(path, entry.name)) == FenceCode.ok
+        ]
         entries = nsmallest(
             MAX_ENTRIES + 1,
-            directory.iterdir(),
+            allowed,
             key=lambda entry: entry.name,
         )
     except OSError as exc:
-        raise FileToolError("directory cannot be listed") from exc
+        raise FileToolError("directory cannot be listed") from None
 
     truncated = len(entries) > MAX_ENTRIES
     body = "\n".join(entry.name for entry in entries[:MAX_ENTRIES])
     return Observation(body=body, truncated=truncated)
+
+
+def _join_rel(directory: str, name: str) -> str:
+    if directory in {"", "."}:
+        return name
+    return f"{directory.rstrip('/').rstrip('\\')}/{name}"

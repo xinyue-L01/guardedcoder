@@ -39,3 +39,16 @@ def test_list_dir_rejects_workspace_escape(tmp_path: Path) -> None:
         list_dir(tmp_path, "../outside")
 
     assert caught.value.code == FenceCode.WORKSPACE_ESCAPE
+
+
+def test_list_dir_omits_sensitive_env_names(tmp_path: Path) -> None:
+    directory = tmp_path / "cfg"
+    directory.mkdir()
+    (directory / ".env").write_text("SECRET=1\n", encoding="utf-8")
+    (directory / ".env.local").write_text("SECRET=1\n", encoding="utf-8")
+    (directory / "app.toml").write_text("ok\n", encoding="utf-8")
+
+    result = list_dir(tmp_path, "cfg")
+
+    assert result.body.splitlines() == ["app.toml"]
+    assert ".env" not in result.body
