@@ -77,7 +77,7 @@ Human edits: <none|简述>
 | T21 | 只读文件工具 | pending | — | WT-F / PR-F |
 | T22 | apply_patch 管线 | pending | — | WT-F / PR-F |
 | T23 | run_command + JUnit 路径占位符 | pending | — | WT-F / PR-F |
-| T24 | M5 只验证已消费 permit | pending | — | WT-F / PR-F |
+| T24 | M5 只验证已消费 permit + 排他 retry claim | pending | — | WT-F / PR-F |
 | T25 | exit_code sensor | pending | — | WT-G / PR-G |
 | T26 | junit_xml（本次运行路径） | pending | — | WT-G / PR-G |
 | T27 | verify 计划不执行 | pending | — | WT-G / PR-G |
@@ -191,6 +191,8 @@ flowchart TB
   T17 --> T19
   T17 --> T20
   T16 --> T21 --> T22 --> T23 --> T24
+  T18 --> T24
+  T19 --> T24
   T23 --> T25 --> T26 --> T27
   T10 --> T28
   T24 --> T28
@@ -218,7 +220,7 @@ flowchart TB
 ```
 
 **可并行：** PR-B / PR-C / PR-D 在 PR-A 合并后；PR-I 与 PR-J 在 PR-E 合并后；PR-M（T40→T41 同分支）与 PR-N（T43）可并行。  
-**强制串行：** G0 → G1 → T01；T24 不得早于 T17；PR-M 内 T40 完成后在同一分支做 T41（不单独合并 T40）；T42 在 T41 与 T43 均完成（PR-M、PR-N 已合并）之后；G2 同时依赖 T42 与 T43。T29 单测用 stub port，真实导出在 T32，端到端在 T43。
+**强制串行：** G0 → G1 → T01；T24 不得早于 T17、T18、T19；T24/T28 在排他 retry claim 验收完成前不得标 done；PR-M 内 T40 完成后在同一分支做 T41（不单独合并 T40）；T42 在 T41 与 T43 均完成（PR-M、PR-N 已合并）之后；G2 同时依赖 T42 与 T43。T29 单测用 stub port，真实导出在 T32，端到端在 T43。
 
 ---
 
@@ -586,7 +588,8 @@ T30 将扩展门控行为，本 task 只做序列。
 
 **依赖：** T17。路径：`persist/recover.py`, `tests/test_recover_patch.py`, `tests/test_recover_command.py`  
 apply_patch：全 post 补记成功；全 pre 同一次重试；混合 error。  
-run_command 停在 executing_action → error，spy 执行次数 0。
+run_command 停在 executing_action → error，spy 执行次数 0。  
+`recover()` 全 pre 返回 `retryable_same_attempt`，保持 task/window 不变、不调 executor；该决策是非授权检查结果，多调用者得到相同结果不代表获得执行权。排他 retry claim 是 T24 硬门槛，不在本 task 实现。
 
 ---
 
@@ -616,11 +619,15 @@ run_command 停在 executing_action → error，spy 执行次数 0。
 
 ## Task 24: M5 只验证已消费 permit
 
-**依赖：** T17, T23。路径：`tools/executor.py`, `tests/test_executor.py`
+**依赖：** T17, T18, T19, T23。路径：`tools/executor.py`, `tests/test_executor.py`（claim 原语若尚未存在则本 task 落地）
 
 `execute` **不得**调用 `create_permit` 或 `consume_permit_and_open_window`。  
 输入必须带已消费 permit id + 活动 window id；否则 `UnauthorizedError` 且不改文件。  
 失败测试：裸 Action 拒绝；未消费 permit 拒绝；窗口缺失拒绝。
+
+**硬门槛（恢复补丁，依赖 T18/T19）：** 执行恢复补丁前必须经独立、原子的排他 retry claim，绑定 task、window、`state_revision`、attempt。`recover()` 的 `retryable_same_attempt` 不是执行授权。M5 无有效 claim 必须拒绝且无副作用；claim 不可重放。该门槛完成前 **T24 与 T28 不得标 done**（不标 won't fix）。
+
+验收必须包含：两个独立连接/进程并发 claim 仅一个成功；无 claim 不产生副作用；崩溃恢复重新核对 pre/post；旧 claim 不可重放。
 
 ---
 
@@ -653,7 +660,8 @@ exit 0 PASS；timeout TIMEOUT；started False ERROR。
 **依赖：** T10, T15, T24, T27。路径：`loop/engine.py`, `loop/context.py`, `tests/test_loop_step.py`
 
 Spy 顺序：`evaluate` → `create_permit` → `consume_permit_and_open_window` → `executor.execute`。  
-`execute` 调用时 permit 已 consumed。HITL 则 `awaiting_approval` 且不执行。
+`execute` 调用时 permit 已 consumed。HITL 则 `awaiting_approval` 且不执行。  
+T24 排他 retry claim 验收完成前本 task **不得标 done**。恢复路径执行补丁前必须持有有效 claim；无 claim 不得 `execute`。
 
 ---
 
@@ -825,7 +833,7 @@ Status: pending | Commit: —
 | 1 G0 仓库外试做 T01+T02；非 Cursor；全新 session；未见史 Codex task 可用 | G0 |
 | 2 G1 Git/gitignore/AGENT_LOG/GitHub/worktree 基线 | G1 |
 | 3 AGENT_LOG 每 task 追加；T42 只审计 | 固定八步、G1、T42 |
-| 4 permit M8 消费、M5 只验证 | 共享接口、T17、T24、T28 |
+| 4 permit M8 消费、M5 只验证、恢复补丁排他 retry claim | 共享接口、T17、T18、T19、T24、T28 |
 | 5 T29 stub port + T32/T43；T30 门控；JUnit 路径 | T23/T26/T29/T30/T43 |
 | 6 discard、CLI 全家、memory CLI、100/90、审计、e2e | T16/T31/T34/T35/T38/T43 |
 | 7 pip-tools hashes | T01、T41 |

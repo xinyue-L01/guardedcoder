@@ -371,7 +371,10 @@
 - **并发/恢复 reviewer（独立）：** `9345686e` 对 `c2a5a9a`：**C=1 I=3**。C1 与 spec C1 同因，已修。I1 双 `retryable_same_attempt`、I2 无重驱动原语 **未修**。
 - **暂停（交人工/Codex）：** I1/I2 与签署语义冲突：全 pre 必须保持 task/window 不变且 recover 不得用 revision 伪装 claim；真正一次性 retry claim/进程锁要在 T22 接 M5 前完成。Controller **不驳回** 这两条 Important，也不在 recover 里做假 claim。未推送。
 - **绿灯（暂停时）：** 全量 **180 passed, 2 skipped**（`145e7a9`）。
-- **Human edits：** none
+- **Human edits：** 产品负责人裁决 C1/I1/I2；未改 persist 实现代码。
+- **人工裁决：** C1 接受为已修复。I1 不作为 PR-E blocker：`retryable_same_attempt` 是非授权检查结果，多调用者得到相同结果不代表执行权；`recover()` 必须继续保持 task/window 不变且不得调 executor。I2 记录为后续强制集成要求，不标 won't fix，不改 PR-E 代码。PLAN T24（依赖 T18/T19）加入硬门槛：执行恢复补丁前须独立原子排他 retry claim（绑定 task/window/state_revision/attempt）；M5 无有效 claim 必须拒绝；claim 不可重放；验收含双连接/进程仅一个成功、无 claim 无副作用、崩溃后重核 pre/post、旧 claim 不可重放。该要求完成前 T24/T28 不得标 done。本轮只更新 PLAN 与 AGENT_LOG；不执行 T21。
+- **绿灯（裁决后）：** 全量 **180 passed, 2 skipped**。
+- **推送：** `feat/e-persist`（不合并、不执行 T21）。
 
 
 
