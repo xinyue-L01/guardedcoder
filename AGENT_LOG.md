@@ -305,5 +305,18 @@
 - **Human edits：** none
 - **红灯：** run_command 仍 NotImplementedError / 缺 test_recover_command
 - **绿灯：** `test_recover_command` 2；全量 **136 passed, 1 skipped**
+- **实现 commit：** `7b8bd894561645935f042eb6ad3aaec4296ee326`
+
+---
+
+## 2026-08-14 · T20 审批一次性（WT-E）
+
+- **Task：** T20（WT-E / `feat/e-persist`）。未执行 T21。未合并 PR-E。
+- **Implementer：** `1108d6d4-be4a-490d-845b-ffab79a02d6e`
+- **Spec+quality reviewer：** `d4a181de-fe9d-4b42-973e-455d2492c5d2` → C/I=0
+- **Human edits：** none
+- **红灯：** 缺 `persist.approval` / `ApprovalError`
+- **绿灯：** `test_approval` 5；全量 **141 passed, 1 skipped**
 - **实现 commit：** TBD
+
 

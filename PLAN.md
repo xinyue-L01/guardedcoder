@@ -15,7 +15,7 @@
 - TDD：先红后绿；保存红灯证据。
 - 每个实现 task 一个新鲜 subagent；commit/PR 注明来源与人工修改。
 - 每个大模块一个 worktree / PR；**worktree 必须从依赖 PR 已合并的最新 `main` 创建**，禁止一次性从旧 base 开全部 worktree。
-- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。下一实现 task 为 T20（PR-E；以状态表为准）。本 PR-E 在 T20 停止。
+- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。下一实现 task 为 T21（PR-F；以状态表为准）。本 PR-E 在 T20 停止。
 - API Key 只进 keyring；不进 TOML/Git/日志/状态/记忆/Mock。
 - 五工具 + `finish`；不为演示新增 network/push/publish。
 - 完整 patch 禁止静默截断。
@@ -72,8 +72,8 @@ Human edits: <none|简述>
 | T16 | SQLite、Task、AuditEvent 脱敏 | done | 3006440dc5989058a3609aeb08aaf101553e134c | WT-E / PR-E |
 | T17 | M8 创建并消费 permit | done | 3eaed9d70322e1f8930eee7fc303f61915573d72 | WT-E / PR-E |
 | T18 | apply_patch 窗口恢复 | done | 45b03c76b328e55067d0028ccd680aad54b4c130 | WT-E / PR-E |
-| T19 | run_command 窗口 fail-closed | done | TBD | WT-E / PR-E |
-| T20 | 审批一次性 | pending | — | WT-E / PR-E |
+| T19 | run_command 窗口 fail-closed | done | 7b8bd894561645935f042eb6ad3aaec4296ee326 | WT-E / PR-E |
+| T20 | 审批一次性 | done | TBD | WT-E / PR-E |
 | T21 | 只读文件工具 | pending | — | WT-F / PR-F |
 | T22 | apply_patch 管线 | pending | — | WT-F / PR-F |
 | T23 | run_command + JUnit 路径占位符 | pending | — | WT-F / PR-F |

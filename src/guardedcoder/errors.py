@@ -20,3 +20,11 @@ class StaleRevisionError(Exception):
 
 class PermitConsumedError(Exception):
     """Raised when a one-shot ExecutionPermit is consumed more than once."""
+
+
+class ApprovalError(Exception):
+    """Raised when approve fingerprint or bound revision does not match."""
+
+
+class PendingConsumedError(Exception):
+    """Raised when a PendingAction is consumed more than once."""
