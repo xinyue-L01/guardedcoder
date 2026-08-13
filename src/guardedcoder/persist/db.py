@@ -58,7 +58,9 @@ CREATE TABLE IF NOT EXISTS execution_windows (
     action_kind TEXT NOT NULL,
     status TEXT NOT NULL,
     preimage_json TEXT,
-    postimage_json TEXT
+    postimage_json TEXT,
+    opened_revision INTEGER NOT NULL,
+    source_run_state TEXT NOT NULL
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_window_active

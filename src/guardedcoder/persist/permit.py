@@ -18,22 +18,52 @@ from guardedcoder.persist.txn import write_txn
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
-def _store_image(image: dict | None) -> str | None:
-    if image is None:
-        return None
+def _norm_key(rel: str) -> str:
+    text = rel.replace("\\", "/").strip()
+    if not text or text.startswith("/") or text.startswith("../") or "/../" in f"/{text}/":
+        raise PermitInvalidError(f"illegal image path {rel!r}")
+    parts = [part for part in text.split("/") if part not in ("", ".")]
+    if any(part == ".." for part in parts):
+        raise PermitInvalidError(f"illegal image path {rel!r}")
+    return "/".join(parts)
+
+
+def _parse_marks(image: dict) -> dict[str, dict[str, object]]:
     stored: dict[str, dict[str, object]] = {}
     for rel, value in image.items():
         if not isinstance(value, dict) or "exists" not in value or "sha256" not in value:
             raise PermitInvalidError("preimage/postimage must be {exists, sha256} marks")
-        exists = bool(value["exists"])
+        exists = value["exists"]
+        if exists is not True and exists is not False:
+            raise PermitInvalidError("exists must be a real bool")
         digest = value["sha256"]
-        if exists:
+        if exists is True:
             if not isinstance(digest, str) or _SHA256_RE.fullmatch(digest) is None:
                 raise PermitInvalidError("sha256 mark must be 64 lowercase hex chars")
         elif digest is not None:
             raise PermitInvalidError("missing file mark must use sha256=null")
-        stored[rel] = {"exists": exists, "sha256": digest}
-    return json.dumps(stored, ensure_ascii=False)
+        stored[_norm_key(rel)] = {"exists": exists, "sha256": digest}
+    return stored
+
+
+def _store_images(
+    action_kind: str,
+    preimage: dict | None,
+    postimage: dict | None,
+) -> tuple[str | None, str | None]:
+    if action_kind == "apply_patch":
+        if not preimage or not postimage:
+            raise PermitInvalidError("apply_patch requires non-empty preimage and postimage")
+        pre_marks = _parse_marks(preimage)
+        post_marks = _parse_marks(postimage)
+        if not pre_marks or set(pre_marks) != set(post_marks):
+            raise PermitInvalidError("preimage/postimage path sets must be identical")
+        return json.dumps(pre_marks, ensure_ascii=False), json.dumps(
+            post_marks, ensure_ascii=False
+        )
+    pre_json = json.dumps(_parse_marks(preimage), ensure_ascii=False) if preimage else None
+    post_json = json.dumps(_parse_marks(postimage), ensure_ascii=False) if postimage else None
+    return pre_json, post_json
 
 
 def _active_window(conn: sqlite3.Connection, task_id: str) -> bool:
@@ -144,8 +174,7 @@ def consume_permit_and_open_window(
 ) -> str:
     del executor
     window_id = str(uuid.uuid4())
-    pre_json = _store_image(preimage)
-    post_json = _store_image(postimage)
+    pre_json, post_json = _store_images(action_kind, preimage, postimage)
     with write_txn(conn):
         permit = conn.execute(
             "SELECT consumed, envelope_hash, state_revision, task_id "
@@ -175,8 +204,9 @@ def consume_permit_and_open_window(
             raise ExecutionWindowOpenError(
                 f"task {task_id} already has an active execution window"
             )
+        source_run_state = task[2]
         new_run_state = (
-            "verifying" if task[2] == "verifying" else "executing_action"
+            "verifying" if source_run_state == "verifying" else "executing_action"
         )
         cur = conn.execute(
             "UPDATE permits SET consumed = 1 WHERE permit_id = ? AND consumed = 0 "
@@ -197,7 +227,8 @@ def consume_permit_and_open_window(
         conn.execute(
             "INSERT INTO execution_windows ("
             "window_id, task_id, permit_id, action_kind, status, "
-            "preimage_json, postimage_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "preimage_json, postimage_json, opened_revision, source_run_state) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 window_id,
                 task_id,
@@ -206,6 +237,8 @@ def consume_permit_and_open_window(
                 "executing_action",
                 pre_json,
                 post_json,
+                expected_revision + 1,
+                source_run_state,
             ),
         )
     return window_id

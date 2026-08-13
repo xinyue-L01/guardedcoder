@@ -5,12 +5,30 @@ import json
 import os
 import sqlite3
 import stat
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
 from guardedcoder.errors import StaleRevisionError
 from guardedcoder.governance.fence import FenceCode, check_path
 from guardedcoder.persist.txn import write_txn
+
+_TERMINAL = frozenset(
+    {
+        "succeeded",
+        "failed",
+        "blocked",
+        "unverified",
+        "exhausted",
+        "error",
+    }
+)
+
+
+class RecoverDecision(StrEnum):
+    retryable_same_attempt = "retryable_same_attempt"
+    recorded_success = "recorded_success"
+    recorded_error = "recorded_error"
 
 
 def _file_mark(workspace: Path, rel: str) -> dict[str, object] | None:
@@ -64,7 +82,7 @@ def recover(
     workspace: Path,
     expected_revision: int,
     executor: Any = None,
-) -> None:
+) -> RecoverDecision:
     del executor
     workspace = workspace.resolve()
     conn.row_factory = sqlite3.Row
@@ -77,49 +95,62 @@ def recover(
         if win is None:
             raise LookupError(f"no open execution window for task {task_id}")
         task = conn.execute(
-            "SELECT worktree_identity, state_revision FROM tasks WHERE task_id = ?",
+            "SELECT worktree_identity, state_revision, run_state FROM tasks "
+            "WHERE task_id = ?",
             (task_id,),
         ).fetchone()
         if task is None:
             raise LookupError(f"task {task_id} not found")
-        owned = Path(task["worktree_identity"]).resolve()
-        kind = win["action_kind"]
-        if workspace != owned or not workspace.is_dir():
-            new_status = "error"
-            new_run_state = "error"
-        elif kind == "run_command":
-            new_status = "error"
-            new_run_state = "error"
-        elif kind != "apply_patch":
-            raise NotImplementedError(
-                f"recovery for action_kind {kind!r} is not implemented"
+        if task["state_revision"] != expected_revision:
+            raise StaleRevisionError(
+                f"stale revision for task {task_id}: expected {expected_revision}"
             )
+
+        owned = Path(task["worktree_identity"]).resolve()
+        opened_revision = win["opened_revision"]
+        source_run_state = win["source_run_state"]
+        kind = win["action_kind"]
+        inconsistent = (
+            opened_revision != expected_revision
+            or opened_revision != task["state_revision"]
+            or task["run_state"] in _TERMINAL
+            or (
+                task["run_state"] not in {"executing_action", "verifying"}
+            )
+            or (
+                source_run_state == "verifying"
+                and task["run_state"] != "verifying"
+            )
+        )
+        new_status = "error"
+        new_run_state = "error"
+        decision = RecoverDecision.recorded_error
+        if workspace != owned or not workspace.is_dir() or inconsistent:
+            pass
+        elif kind != "apply_patch":
+            pass
         else:
             preimage = json.loads(win["preimage_json"]) if win["preimage_json"] else None
             postimage = json.loads(win["postimage_json"]) if win["postimage_json"] else None
-            match_post = _matches_image(workspace, postimage)
-            match_pre = _matches_image(workspace, preimage)
-            if match_post is None or match_pre is None:
-                new_status = "error"
-                new_run_state = "error"
-            elif match_post:
-                new_status = "succeeded"
-                new_run_state = "running"
-            elif match_pre:
-                cur = conn.execute(
-                    "UPDATE tasks SET state_revision = state_revision + 1 "
-                    "WHERE task_id = ? AND state_revision = ?",
-                    (task_id, expected_revision),
-                )
-                if cur.rowcount == 0:
-                    raise StaleRevisionError(
-                        f"stale revision for task {task_id}: expected {expected_revision}"
-                    )
-                return
+            if (
+                not preimage
+                or not postimage
+                or set(preimage) != set(postimage)
+            ):
+                pass
             else:
-                new_status = "error"
-                new_run_state = "error"
-
+                match_post = _matches_image(workspace, postimage)
+                match_pre = _matches_image(workspace, preimage)
+                if match_post is None or match_pre is None:
+                    pass
+                elif match_post:
+                    new_status = "succeeded"
+                    new_run_state = (
+                        "verifying" if source_run_state == "verifying" else "running"
+                    )
+                    decision = RecoverDecision.recorded_success
+                elif match_pre:
+                    return RecoverDecision.retryable_same_attempt
         cur = conn.execute(
             "UPDATE tasks SET run_state = ?, state_revision = state_revision + 1 "
             "WHERE task_id = ? AND state_revision = ?",
@@ -133,3 +164,4 @@ def recover(
             "UPDATE execution_windows SET status = ? WHERE window_id = ?",
             (new_status, win["window_id"]),
         )
+        return decision

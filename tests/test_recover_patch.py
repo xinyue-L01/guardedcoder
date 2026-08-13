@@ -9,7 +9,7 @@ import pytest
 from guardedcoder.errors import StaleRevisionError
 from guardedcoder.persist.db import connect
 from guardedcoder.persist.permit import consume_permit_and_open_window, create_permit
-from guardedcoder.persist.recover import recover
+from guardedcoder.persist.recover import RecoverDecision, recover
 from guardedcoder.persist.store import create_task
 
 
@@ -113,10 +113,11 @@ def test_all_preimage_stays_recoverable(tmp_path) -> None:
         preimage={"a.txt": "before-a", "b.txt": "before-b"},
         postimage={"a.txt": "after-a", "b.txt": "after-b"},
     )
-    recover(conn, task_id="t1", workspace=ws, expected_revision=3)
+    first = recover(conn, task_id="t1", workspace=ws, expected_revision=3)
     task = _task(conn)
+    assert first == RecoverDecision.retryable_same_attempt
     assert task["run_state"] == "executing_action"
-    assert task["state_revision"] == 4
+    assert task["state_revision"] == 3
     assert _window(conn, window_id)["status"] == "executing_action"
 
 

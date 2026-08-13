@@ -116,7 +116,12 @@ def test_consume_opens_window_and_sets_executing_action(tmp_path) -> None:
                 "sha256": hashlib.sha256(b"x").hexdigest(),
             }
         },
-        postimage=None,
+        postimage={
+            "a.txt": {
+                "exists": True,
+                "sha256": hashlib.sha256(b"y").hexdigest(),
+            }
+        },
     )
     task = _task(conn)
     assert task["run_state"] == "executing_action"
@@ -132,9 +137,12 @@ def test_consume_opens_window_and_sets_executing_action(tmp_path) -> None:
     assert win["action_kind"] == "apply_patch"
     assert win["status"] == "executing_action"
     stored_pre = json.loads(win["preimage_json"])
+    stored_post = json.loads(win["postimage_json"])
     assert stored_pre["a.txt"]["exists"] is True
     assert stored_pre["a.txt"]["sha256"] == hashlib.sha256(b"x").hexdigest()
-    assert win["postimage_json"] is None
+    assert stored_post["a.txt"]["sha256"] == hashlib.sha256(b"y").hexdigest()
+    assert win["opened_revision"] == 3
+    assert win["source_run_state"] == "running"
 
 
 def test_second_consume_raises_permit_consumed(tmp_path) -> None:

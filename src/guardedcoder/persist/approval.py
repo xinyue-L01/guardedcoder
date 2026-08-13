@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 import uuid
 
-from guardedcoder.errors import ApprovalError, PendingConsumedError
+from guardedcoder.errors import ApprovalError, PendingConsumedError, StaleRevisionError
 from guardedcoder.persist.txn import write_txn
 
 
@@ -18,6 +18,20 @@ def insert_pending(
 ) -> str:
     pending_id = pending_action_id or str(uuid.uuid4())
     with write_txn(conn):
+        task = conn.execute(
+            "SELECT run_state, state_revision FROM tasks WHERE task_id = ?",
+            (task_id,),
+        ).fetchone()
+        if task is None:
+            raise ApprovalError(f"task {task_id} not found")
+        if task[0] != "awaiting_approval":
+            raise ApprovalError(
+                f"insert_pending requires awaiting_approval, got {task[0]!r}"
+            )
+        if task[1] != state_revision:
+            raise StaleRevisionError(
+                f"stale revision for task {task_id}: expected {state_revision}"
+            )
         conn.execute(
             "INSERT INTO pending_actions ("
             "pending_action_id, task_id, fingerprint, normalized_action_json, "
@@ -28,6 +42,41 @@ def insert_pending(
                 fingerprint,
                 normalized_action_json,
                 state_revision,
+            ),
+        )
+    return pending_id
+
+
+def request_approval(
+    conn: sqlite3.Connection,
+    *,
+    task_id: str,
+    fingerprint: str,
+    normalized_action_json: str,
+    expected_revision: int,
+    pending_action_id: str | None = None,
+) -> str:
+    pending_id = pending_action_id or str(uuid.uuid4())
+    with write_txn(conn):
+        cur = conn.execute(
+            "UPDATE tasks SET run_state = ?, state_revision = state_revision + 1 "
+            "WHERE task_id = ? AND state_revision = ? AND run_state = ?",
+            ("awaiting_approval", task_id, expected_revision, "running"),
+        )
+        if cur.rowcount == 0:
+            raise StaleRevisionError(
+                f"stale revision for task {task_id}: expected {expected_revision}"
+            )
+        conn.execute(
+            "INSERT INTO pending_actions ("
+            "pending_action_id, task_id, fingerprint, normalized_action_json, "
+            "state_revision, consumed) VALUES (?, ?, ?, ?, ?, 0)",
+            (
+                pending_id,
+                task_id,
+                fingerprint,
+                normalized_action_json,
+                expected_revision + 1,
             ),
         )
     return pending_id

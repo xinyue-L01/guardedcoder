@@ -64,10 +64,19 @@ def test_recover_escape_path_is_error_without_outside_read(tmp_path) -> None:
         envelope_hash="env-1",
         remaining_steps=10,
     )
-    _open_patch(
+    window_id = _open_patch(
         conn,
         preimage={"inside.txt": _mark(True, "in")},
-        postimage={"../secret.txt": _mark(True, "OUTSIDE-BODY")},
+        postimage={"inside.txt": _mark(True, "OUTSIDE-BODY")},
+    )
+    payload = (
+        '{"../secret.txt":{"exists":true,"sha256":"%s"}}'
+        % hashlib.sha256(b"OUTSIDE-BODY").hexdigest()
+    )
+    conn.execute(
+        "UPDATE execution_windows SET preimage_json = ?, postimage_json = ? "
+        "WHERE window_id = ?",
+        (payload, payload, window_id),
     )
     recover(conn, task_id="t1", workspace=ws, expected_revision=3)
     assert _task(conn)["run_state"] == "error"
