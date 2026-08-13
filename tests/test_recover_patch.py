@@ -116,7 +116,7 @@ def test_all_preimage_stays_recoverable(tmp_path) -> None:
     recover(conn, task_id="t1", workspace=ws, expected_revision=3)
     task = _task(conn)
     assert task["run_state"] == "executing_action"
-    assert task["state_revision"] == 3
+    assert task["state_revision"] == 4
     assert _window(conn, window_id)["status"] == "executing_action"
 
 

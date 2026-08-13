@@ -34,8 +34,13 @@ def _file_mark(workspace: Path, rel: str) -> dict[str, object] | None:
         info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode):
             return None
-        digest = hashlib.sha256(os.read(fd, info.st_size)).hexdigest()
-        return {"exists": True, "sha256": digest}
+        hasher = hashlib.sha256()
+        while True:
+            chunk = os.read(fd, 1024 * 1024)
+            if not chunk:
+                break
+            hasher.update(chunk)
+        return {"exists": True, "sha256": hasher.hexdigest()}
     finally:
         os.close(fd)
 
@@ -101,7 +106,12 @@ def recover(
                 new_status = "succeeded"
                 new_run_state = "running"
             elif match_pre:
-                if task["state_revision"] != expected_revision:
+                cur = conn.execute(
+                    "UPDATE tasks SET state_revision = state_revision + 1 "
+                    "WHERE task_id = ? AND state_revision = ?",
+                    (task_id, expected_revision),
+                )
+                if cur.rowcount == 0:
                     raise StaleRevisionError(
                         f"stale revision for task {task_id}: expected {expected_revision}"
                     )
