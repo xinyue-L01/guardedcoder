@@ -10,6 +10,17 @@ from guardedcoder.tools.paths import resolve_under_worktree
 MAX_BYTES = 65_536
 
 
+def _readline_capped(stream, cap: int) -> tuple[bytes, bool]:
+    line = stream.readline(cap + 1)
+    if len(line) > cap and not line.endswith(b"\n"):
+        while True:
+            piece = stream.readline(cap)
+            if not piece or piece.endswith(b"\n"):
+                break
+        return line[:cap], True
+    return line, False
+
+
 def _decode_text_prefix(data: bytes, truncated: bool) -> str:
     try:
         return data.decode("utf-8", errors="strict")
@@ -44,7 +55,7 @@ def read_file(
     try:
         with file_path.open("rb") as stream:
             for _ in range(start_line - 1):
-                skipped = stream.readline()
+                skipped, _skipped_trunc = _readline_capped(stream, MAX_BYTES)
                 if not skipped:
                     break
                 if b"\x00" in skipped:
@@ -53,12 +64,12 @@ def read_file(
             truncated = False
             current = start_line
             while end_line is None or current <= end_line:
-                line = stream.readline()
+                line, line_trunc = _readline_capped(stream, MAX_BYTES)
                 if not line:
                     break
                 if b"\x00" in line:
                     raise FileToolError("file is binary or not valid UTF-8")
-                if len(collected) + len(line) > MAX_BYTES:
+                if line_trunc or len(collected) + len(line) > MAX_BYTES:
                     collected.extend(line[: MAX_BYTES - len(collected)])
                     truncated = True
                     break

@@ -92,6 +92,15 @@ def test_read_file_line_range_reads_past_initial_byte_window(tmp_path: Path) -> 
     assert result.truncated is False
 
 
+def test_read_file_skips_huge_line_without_unbounded_read(tmp_path: Path) -> None:
+    (tmp_path / "huge.txt").write_bytes(b"x" * 200_000 + b"\nwanted\n")
+
+    result = read_file(tmp_path, "huge.txt", start_line=2, end_line=2)
+
+    assert result.body.splitlines() == ["wanted"]
+    assert result.truncated is False
+
+
 def test_read_file_line_range_reads_selected_lines(tmp_path: Path) -> None:
     (tmp_path / "lines.txt").write_text("one\ntwo\nthree\nfour\n", encoding="utf-8")
 

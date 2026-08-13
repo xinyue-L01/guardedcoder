@@ -18,7 +18,7 @@ from guardedcoder.models.command_result import CommandResult
 from guardedcoder.models.envelope import Envelope
 from guardedcoder.models.observation import Observation
 from guardedcoder.persist.txn import write_txn
-from guardedcoder.tools.apply_patch import apply_patch
+from guardedcoder.tools.apply_patch import apply_patch, patch_paths
 from guardedcoder.tools.list_dir import list_dir
 from guardedcoder.tools.read_file import read_file
 from guardedcoder.tools.run_command import run_command
@@ -35,7 +35,9 @@ _ACTION_KIND = {
 
 def _file_mark(workspace: Path, rel: str) -> dict[str, object]:
     path = workspace / rel
-    if not path.is_file() or path.is_symlink():
+    if path.is_symlink():
+        return {"exists": True, "sha256": None}
+    if not path.is_file():
         return {"exists": False, "sha256": None}
     return {
         "exists": True,
@@ -179,7 +181,13 @@ def execute(
             return Observation(body="already applied", truncated=False)
         if not _matches(worktree, preimage):
             raise UnauthorizedError("pre/post image mismatch")
-        observation = apply_patch(worktree, action.diff).observation
+        authorized = set(preimage)
+        if any(rel not in authorized for rel in patch_paths(action.diff)):
+            raise UnauthorizedError("patch paths escape authorized image")
+        allow_delete = envelope.allow_delete if envelope is not None else False
+        observation = apply_patch(
+            worktree, action.diff, allow_delete=allow_delete
+        ).observation
         _consume_claim(conn, claim_id)
         return observation
 

@@ -109,6 +109,27 @@ def test_pure_rename_survives_following_file_patch(tmp_path: Path) -> None:
     assert (tmp_path / "c.txt").read_bytes() == b"new-c\n"
 
 
+def test_trailing_pure_rename_after_other_file(tmp_path: Path) -> None:
+    (tmp_path / "a.txt").write_bytes(b"old\n")
+    (tmp_path / "old.txt").write_bytes(b"moved\n")
+    diff = (
+        "--- a/a.txt\n"
+        "+++ b/a.txt\n"
+        "@@ -1,1 +1,1 @@\n"
+        "-old\n"
+        "+new\n"
+        "diff --git a/old.txt b/new.txt\n"
+        "rename from old.txt\n"
+        "rename to new.txt\n"
+    )
+
+    apply_patch(tmp_path, diff, allow_delete=True)
+
+    assert (tmp_path / "a.txt").read_bytes() == b"new\n"
+    assert not (tmp_path / "old.txt").exists()
+    assert (tmp_path / "new.txt").read_bytes() == b"moved\n"
+
+
 def test_create_does_not_overwrite_existing_file(tmp_path: Path) -> None:
     (tmp_path / "a.txt").write_bytes(b"keep\n")
     diff = "--- /dev/null\n+++ b/a.txt\n@@ -0,0 +1,1 @@\n+new\n"

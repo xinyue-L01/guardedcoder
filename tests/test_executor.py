@@ -522,3 +522,146 @@ def test_run_command_second_execute_is_rejected(tmp_path: Path) -> None:
             task_dir=tmp_path,
             envelope=envelope,
         )
+
+
+def test_claim_requires_execution_started(tmp_path: Path) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    conn = connect(tmp_path / "g.db")
+    _create(conn, ws)
+    _permit, window_id = _open_patch(conn, ws)
+    with pytest.raises(UnauthorizedError):
+        claim_recovered_attempt(
+            conn,
+            task_id="t1",
+            window_id=window_id,
+            expected_revision=3,
+            attempt_id="1",
+        )
+
+
+def test_execute_rejects_diff_outside_image(tmp_path: Path) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "b.txt").write_bytes(b"keep\n")
+    conn = connect(tmp_path / "g.db")
+    _create(conn, ws)
+    permit_id, window_id = _open_patch(conn, ws)
+    diff = (
+        "diff --git a/a.txt b/a.txt\n"
+        "--- a/a.txt\n"
+        "+++ b/a.txt\n"
+        "@@ -1,1 +1,1 @@\n"
+        "-before\n"
+        "+after\n"
+        "diff --git a/b.txt b/b.txt\n"
+        "--- a/b.txt\n"
+        "+++ b/b.txt\n"
+        "@@ -1,1 +1,1 @@\n"
+        "-keep\n"
+        "+hacked\n"
+    )
+    with pytest.raises(UnauthorizedError):
+        execute(
+            conn,
+            task_id="t1",
+            permit_id=permit_id,
+            window_id=window_id,
+            action=ApplyPatchAction(action="apply_patch", diff=diff),
+            worktree=ws,
+        )
+    assert (ws / "a.txt").read_bytes() == b"before\n"
+    assert (ws / "b.txt").read_bytes() == b"keep\n"
+
+
+def test_execute_passes_allow_delete(tmp_path: Path) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "a.txt").write_bytes(b"before\n")
+    conn = connect(tmp_path / "g.db")
+    _create(conn, ws)
+    permit_id = create_permit(
+        conn,
+        task_id="t1",
+        action_id="a1",
+        fingerprint="fp1",
+        envelope_hash="env-1",
+        expected_revision=1,
+    )
+    window_id = consume_permit_and_open_window(
+        conn,
+        task_id="t1",
+        permit_id=permit_id,
+        expected_revision=2,
+        action_kind="apply_patch",
+        preimage={"a.txt": _mark(True, "before\n")},
+        postimage={"a.txt": _mark(False)},
+    )
+    envelope = Envelope(
+        read_paths=("src",),
+        write_paths=("src",),
+        profiles=(),
+        verify_profiles=(),
+        max_steps=10,
+        max_total_seconds=300,
+        allow_delete=True,
+        allow_network=False,
+        config_digest="abc",
+    )
+    diff = "--- a/a.txt\n+++ /dev/null\n@@ -1,1 +0,0 @@\n-before\n"
+    execute(
+        conn,
+        task_id="t1",
+        permit_id=permit_id,
+        window_id=window_id,
+        action=ApplyPatchAction(action="apply_patch", diff=diff),
+        worktree=ws,
+        envelope=envelope,
+    )
+    assert not (ws / "a.txt").exists()
+
+
+def test_symlink_is_not_treated_as_deleted(tmp_path: Path) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "a.txt").write_bytes(b"before\n")
+    conn = connect(tmp_path / "g.db")
+    _create(conn, ws)
+    permit_id = create_permit(
+        conn,
+        task_id="t1",
+        action_id="a1",
+        fingerprint="fp1",
+        envelope_hash="env-1",
+        expected_revision=1,
+    )
+    window_id = consume_permit_and_open_window(
+        conn,
+        task_id="t1",
+        permit_id=permit_id,
+        expected_revision=2,
+        action_kind="apply_patch",
+        preimage={"a.txt": _mark(True, "before\n")},
+        postimage={"a.txt": _mark(False)},
+    )
+    (ws / "a.txt").unlink()
+    target = tmp_path / "outside.txt"
+    target.write_bytes(b"secret\n")
+    try:
+        (ws / "a.txt").symlink_to(target)
+    except OSError:
+        pytest.skip("symlink creation requires privilege on this Windows host")
+    with pytest.raises(UnauthorizedError):
+        execute(
+            conn,
+            task_id="t1",
+            permit_id=permit_id,
+            window_id=window_id,
+            action=ApplyPatchAction(
+                action="apply_patch",
+                diff="--- a/a.txt\n+++ /dev/null\n@@ -1,1 +0,0 @@\n-before\n",
+            ),
+            worktree=ws,
+        )
+    assert (ws / "a.txt").is_symlink()
+    assert target.read_bytes() == b"secret\n"

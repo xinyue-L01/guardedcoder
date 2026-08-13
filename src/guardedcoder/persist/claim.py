@@ -26,13 +26,16 @@ def claim_recovered_attempt(
                 f"stale revision for task {task_id}: expected {expected_revision}"
             )
         window = conn.execute(
-            "SELECT task_id, status FROM execution_windows WHERE window_id = ?",
+            "SELECT task_id, status, execution_started, action_kind "
+            "FROM execution_windows WHERE window_id = ?",
             (window_id,),
         ).fetchone()
         if (
             window is None
             or window[0] != task_id
             or window[1] != "executing_action"
+            or not window[2]
+            or window[3] != "apply_patch"
         ):
             raise UnauthorizedError("no recoverable apply_patch window")
         try:

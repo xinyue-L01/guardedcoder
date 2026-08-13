@@ -127,7 +127,7 @@ def _parse_diff(diff: str) -> list[_FilePatch]:
         if line.startswith("@@"):
             raise PatchError("malformed diff")
         index += 1
-    if not files and rename_from and rename_to:
+    if rename_from and rename_to:
         files.append(_FilePatch(rename_from, rename_to, ()))
     if not files:
         raise PatchError("malformed diff")
@@ -227,6 +227,15 @@ def _fence(worktree: Path, rel: str) -> None:
     candidate = worktree / rel
     if candidate.is_symlink():
         raise PatchError("symlink")
+
+
+def patch_paths(diff: str) -> list[str]:
+    paths: list[str] = []
+    for file_patch in _parse_diff(diff):
+        for rel in _involved_paths(file_patch):
+            if rel not in paths:
+                paths.append(rel)
+    return paths
 
 
 def _involved_paths(file_patch: _FilePatch) -> list[str]:
