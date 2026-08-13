@@ -125,6 +125,19 @@
 - **绿灯：** `test_appconfig` 3 passed；全量 **18 passed**
 - **实现 commit：** `16ee5ab711a8e4797395f6bedf949d572ab4d1b9`；假 key `a09cbdb30c1e8be9ccde85528c04a2f406be29c9`
 
+---
+
+## 2026-08-14 · T07 TOML fail closed（WT-B）
+
+- **Implementer：** `763cabac-c673-4216-9a62-2f20103b6b67`
+- **Fixer：** `c899559d-521d-45d4-a952-fb5ff164700a`（UnicodeDecodeError→ConfigError）
+- **Spec reviewer：** `38d4dd69-cfa4-4e18-baed-f3ddaa0c61af` → Approved
+- **Quality reviewer：** 初审 `9fac507d-6064-4db1-84e8-303707a295f6` Needs fixes；复审 `43497b27-00f8-4ea0-aa39-9aceea224120` Approved
+- **Human edits：** none
+- **绿灯：** 修复后 `test_config_load` 12 passed；全量 **30 passed**
+- **实现 commit：** `856630970d6a93f634fefa5bdd95958dcc06aeb7`；decode `2b882a53bc33b517a514e923c0f8d3f94ff9a155`
+
+
 
 
 

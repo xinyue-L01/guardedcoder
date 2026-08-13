@@ -60,7 +60,7 @@ Human edits: <none|简述>
 | T04 | 信封模型 | done | 95d11d261233ee05336019567480f6e2a8044d68 | WT-A / PR-A |
 | T05 | 指纹 | done | bf52b007645c0ae165066efd5482b1aa0e36a5a6 | WT-A / PR-A |
 | T06 | AppConfig | done | a09cbdb30c1e8be9ccde85528c04a2f406be29c9 | WT-B / PR-B |
-| T07 | TOML 校验 | pending | — | WT-B / PR-B |
+| T07 | TOML 校验 | done | 2b882a53bc33b517a514e923c0f8d3f94ff9a155 | WT-B / PR-B |
 | T08 | 信封合成 | pending | — | WT-B / PR-B |
 | T09 | 配置不能放宽硬规则 | pending | — | WT-B / PR-B |
 | T10 | MockLLM | pending | — | WT-C / PR-C |
