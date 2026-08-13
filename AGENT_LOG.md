@@ -87,6 +87,20 @@
 - **绿灯：** 初版 2 passed / 全量 10 passed；修复后 envelope 3 passed，全量 **11 passed**。
 - **实现 commit：** `0118410aae2f38bfdb361a2040762fb6cbdd7781`；冻结 `95d11d261233ee05336019567480f6e2a8044d68`
 
+---
+
+## 2026-08-14 · T05 指纹绑定上下文
+
+- **Task：** T05（WT-A / `feat/a-foundation`）。未执行 T06。未合并 PR-A。
+- **Implementer：** `6c646d02-34c9-4b23-8b8d-f79ff13edf77`
+- **Spec reviewer：** `1c0aea1b-de05-4bed-80e0-7133df23f300` → Spec compliant，Approved。
+- **Quality reviewer：** `a0321e35-3dc7-49b8-ad32-597c2f11474f` → Approved；无 Critical/Important/Minor。
+- **Human edits：** none
+- **红灯：** 仅测试时 `ModuleNotFoundError: No module named 'guardedcoder.fingerprint'`。
+- **绿灯：** `test_fingerprint.py` 2 passed；全量 **13 passed**。
+- **实现 commit：** `bf52b007645c0ae165066efd5482b1aa0e36a5a6`
+
+
 
 
 

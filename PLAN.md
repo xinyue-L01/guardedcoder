@@ -15,7 +15,7 @@
 - TDD：先红后绿；保存红灯证据。
 - 每个实现 task 一个新鲜 subagent；commit/PR 注明来源与人工修改。
 - 每个大模块一个 worktree / PR；**worktree 必须从依赖 PR 已合并的最新 `main` 创建**，禁止一次性从旧 base 开全部 worktree。
-- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。下一实现 task 为 T05（以状态表为准）。
+- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。下一实现 task 为 T06（PR-B；以状态表为准）。本 PR-A 在 T05 停止。
 - API Key 只进 keyring；不进 TOML/Git/日志/状态/记忆/Mock。
 - 五工具 + `finish`；不为演示新增 network/push/publish。
 - 完整 patch 禁止静默截断。
@@ -58,7 +58,7 @@ Human edits: <none|简述>
 | T02 | 状态枚举 | done | ba3e36cb2ba812c57bc3f9340b1171b2495eb3ba | WT-A / PR-A |
 | T03 | 动作 schema | done | 92a671f0c9afed19fe714a708fcf24e3af6d27fb | WT-A / PR-A |
 | T04 | 信封模型 | done | 95d11d261233ee05336019567480f6e2a8044d68 | WT-A / PR-A |
-| T05 | 指纹 | pending | — | WT-A / PR-A |
+| T05 | 指纹 | done | bf52b007645c0ae165066efd5482b1aa0e36a5a6 | WT-A / PR-A |
 | T06 | AppConfig | pending | — | WT-B / PR-B |
 | T07 | TOML 校验 | pending | — | WT-B / PR-B |
 | T08 | 信封合成 | pending | — | WT-B / PR-B |
@@ -402,6 +402,17 @@ python -m piptools compile --generate-hashes --allow-unsafe --index-url https://
 ---
 
 ## Task 05: 指纹绑定上下文
+
+**状态：** done · 实现 commit `bf52b007645c0ae165066efd5482b1aa0e36a5a6`
+
+- [x] 写失败测试
+- [x] 跑红灯命令，记录预期失败
+- [x] 最小实现
+- [x] 跑绿灯命令
+- [x] 重构并回归测试
+- [x] spec 合规审查（Critical 必修）
+- [x] 代码质量审查（Critical 必修）
+- [x] commit（含 Subagent / Human edits）+ 追加 `AGENT_LOG.md` + 更新本 PLAN 状态栏
 
 **依赖：** T04。路径：`fingerprint.py`, `tests/test_fingerprint.py`  
 失败测试：仅 `task_id` 不同则 fingerprint 不同；相同输入稳定。
