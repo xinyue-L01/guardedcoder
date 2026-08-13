@@ -56,3 +56,7 @@ class FenceError(FileToolError):
     def __init__(self, code: FenceCode) -> None:
         self.code = code
         super().__init__(code.value)
+
+
+class PatchError(FileToolError):
+    """Raised when a unified diff cannot be previewed or applied atomically."""
