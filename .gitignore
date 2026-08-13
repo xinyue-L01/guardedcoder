@@ -39,6 +39,7 @@ credentials.json
 
 # Editor / OS junk
 .cursor/
+.superpowers/
 *~
 *.swp
 *.swo
