@@ -112,6 +112,20 @@
 - **绿灯：** `tests/test_envelope.py` 5 passed；全量 **15 passed**。钉死 digest `06694b4f73d148902ba8baa28be3110ed98a3b32a8ef22761b707a9829ba6f45`。
 - **Follow-up commit：** `692abb57e5c6282f9fddca7dffe3c48b3832500a`
 
+---
+
+## 2026-08-14 · T06 AppConfig（WT-B）
+
+- **Implementer：** `797bf1c9-38f7-49c6-a6ae-bf87b8b6fa46`
+- **Fixer：** `3360dc32-55e1-4d48-a547-ef64a76629c8`（假 key 改为拼接）
+- **Spec reviewer：** `28a85fb0-2ff8-43a0-ac1a-33fec59cb00a` → Approved（Minor 假 key 已修）
+- **Quality reviewer：** `d62ec361-4e99-43d4-974a-2f14bbbb505a` → Approved
+- **Human edits：** none
+- **红灯：** `ModuleNotFoundError: guardedcoder.models.config`
+- **绿灯：** `test_appconfig` 3 passed；全量 **18 passed**
+- **实现 commit：** `16ee5ab711a8e4797395f6bedf949d572ab4d1b9`；假 key `a09cbdb30c1e8be9ccde85528c04a2f406be29c9`
+
+
 
 
 
