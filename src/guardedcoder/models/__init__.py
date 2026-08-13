@@ -1,4 +1,5 @@
+from guardedcoder.models.command_result import CommandResult
 from guardedcoder.models.enums import ArtifactState, RunState
 from guardedcoder.models.observation import Observation
 
-__all__ = ["ArtifactState", "Observation", "RunState"]
+__all__ = ["ArtifactState", "CommandResult", "Observation", "RunState"]
