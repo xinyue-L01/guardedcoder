@@ -402,4 +402,17 @@
 - **绿灯：** `tests/test_patch_artifact.py` **3 passed**；全量 **201 passed, 2 skipped**。
 - **实现 commit：** `940470f27584e790a24dec11da57fcc94f5e4238`
 
+---
+
+## 2026-08-14 · T33 apply-back 窗口
+
+- **Task：** T33（WT-I / `feat/i-workspace`）。未合并 PR-I。
+- **Implementer：** lane-i-owner
+- **Spec reviewer：** 初审 `2f3cae27-453c-4796-aebe-ed53b1e158c6` Needs fixes（I=1：recover 未校验 `task.repo_path`）；复审 `d119acb1-1d49-4f10-ac85-20c5235b5400` → Spec ✅ C/I=0。
+- **Quality reviewer：** 初审 `31e83f6d-e6e0-4776-b82b-099625c8b1bb` I=2（旧库 permit_id NOT NULL；空 postimage 虚真）；`3c3b3bec-9821-428a-bb8d-17bfaacfa7c0` I=1（重建拷贝 NULL opened_revision）；复审 `4c10bce7-9c69-49c5-8f13-91050274431e` → Approved C/I=0。
+- **Human edits：** none
+- **红灯：** `.superpowers/sdd/t33-red.txt` collection `ModuleNotFoundError: guardedcoder.workspace.apply_back`
+- **绿灯：** `tests/test_apply_back.py` **14 passed**；全量 **215 passed, 2 skipped**。
+- **实现 commit：** `83d97079dea01938072d68e4cb76d283a059dcd1`
+
 
