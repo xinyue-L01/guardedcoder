@@ -382,8 +382,8 @@
 
 - **Task：** T21（WT-F / `feat/f-tools`）。未执行 T22（本条仅 T21）。
 - **Implementer：** 原实现 `bf019fe`；续跑 owner `8f380e59-0ee8-47a9-b0f6-2f489643fe08`
-- **Spec reviewer：** 初审 `2759c690` C=0 I=2（行范围、search 单文件 I/O）；复审 `de375c50` C=0 I=2（行范围只切 64KiB 前缀、nested read_paths 剪枝）；已修。
-- **Quality reviewer：** 前轮独立审查 `0ccafa24` C=2 I=4（脱敏误伤 `task-21`、`.git` 泄露等）；已修。
+- **Spec reviewer：** 初审 `2759c690` C=0 I=2；复审 `de375c50` C=0 I=2；终审 `e7bef377` C=0 I=0 Approved。
+- **Quality reviewer：** 前轮 `0ccafa24` C=2 I=4；复审 `9520c5d5`（head `3dcf1d7`）C=0 I=4，其中 I1/I4 已在 `e5a085b` 修；I2 大文件提前 return、I3 截断 UTF-8 丢前缀、空 query 在后续 fix 修。
 - **Human edits：** none
 - **红灯：** 缺失模块 / 行范围 / `.env` 名 / `read_paths` / `.git`（`.superpowers/sdd/t21-red.txt`、`t21-fix-red.txt`）
 - **绿灯：** T21 目标 26+；全量当时 **206 passed, 2 skipped**；后续累计见 T24。
@@ -396,7 +396,8 @@
 
 - **Task：** T22。未执行 T23（本条仅 T22）。
 - **Implementer：** `8f380e59-0ee8-47a9-b0f6-2f489643fe08`
-- **Spec reviewer：** `0538683d` 初审 C=1 I=2（临时文件跟随 symlink、写入中途不回滚、`/dev/null` 覆盖已存在文件）；已修。
+- **Spec reviewer：** 初审 `0538683d` C=1 I=2；终审 `670c0e6f` C=0 I=0。
+- **Quality reviewer：** `6db4ea3b` C=2 I=4（空行 hunk、纯 rename、回滚、nofollow、覆盖）；`\ No newline` 在 `-` 行后误剥已在后续 fix 修。
 - **Human edits：** none
 - **红灯：** `ImportError: PatchError`（`.superpowers/sdd/t22-red.txt`）
 - **绿灯：** `test_apply_patch` 7 passed / 1 skipped；全量当时 **213 passed, 3 skipped**
@@ -409,7 +410,8 @@
 
 - **Task：** T23。未执行 T24（本条仅 T23）。
 - **Implementer：** `8f380e59-0ee8-47a9-b0f6-2f489643fe08`
-- **Spec/Quality reviewer：** `6679e800` / `da7cc7ed`（inherit，进行中时已按 SPEC 落地：`shell=False`、唯一 `{junit_out}`、`CommandResult` 无 PASS/FAIL）
+- **Spec reviewer：** `6679e800` C=0 I=0 Approved。
+- **Quality reviewer：** `da7cc7ed` C=0 I=0；Minor：测试未钉死 `shell=False`；`capture_output` 先收全量再截断。
 - **Human edits：** none
 - **红灯：** `ModuleNotFoundError: command_result`（`.superpowers/sdd/t23-red.txt`）
 - **绿灯：** `test_run_command` 6 passed；全量当时 **219 passed, 3 skipped**

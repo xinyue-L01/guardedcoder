@@ -24,6 +24,25 @@ def _modify_diff(path: str, old: str, new: str) -> str:
     )
 
 
+def test_no_newline_marker_after_delete_does_not_strip_prior_output(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "a.txt").write_bytes(b"line1\nold")
+    diff = (
+        "--- a/a.txt\n"
+        "+++ b/a.txt\n"
+        "@@ -1,2 +1,2 @@\n"
+        " line1\n"
+        "-old\n"
+        "\\ No newline at end of file\n"
+        "+new\n"
+    )
+
+    apply_patch(tmp_path, diff)
+
+    assert (tmp_path / "a.txt").read_bytes() == b"line1\nnew\n"
+
+
 def test_apply_patch_modifies_one_file_and_records_images(tmp_path: Path) -> None:
     (tmp_path / "a.txt").write_bytes(b"old\n")
 

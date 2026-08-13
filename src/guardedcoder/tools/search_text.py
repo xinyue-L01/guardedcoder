@@ -78,9 +78,10 @@ def _matching_records(
     relative: str,
     query: str,
     limit: int,
-) -> tuple[list[str], bool] | None:
+) -> tuple[list[str], bool, bool] | None:
     records: list[str] = []
-    overflow = False
+    file_truncated = False
+    match_overflow = False
     try:
         with file_path.open("rb") as stream:
             data = stream.read(MAX_OUTPUT_BYTES + 1)
@@ -89,12 +90,14 @@ def _matching_records(
     if b"\x00" in data:
         return None
     if len(data) > MAX_OUTPUT_BYTES:
-        overflow = True
+        file_truncated = True
         data = data[:MAX_OUTPUT_BYTES]
     try:
         text = data.decode("utf-8", errors="strict")
     except UnicodeDecodeError:
-        return None
+        if not file_truncated:
+            return None
+        text = data.decode("utf-8", errors="ignore")
     for line_number, line in enumerate(text.splitlines(), start=1):
         if query not in line:
             continue
@@ -102,8 +105,8 @@ def _matching_records(
         if len(records) < limit:
             records.append(record)
         else:
-            overflow = True
-    return records, overflow
+            match_overflow = True
+    return records, file_truncated, match_overflow
 
 
 def _utf8_prefix(value: str, byte_limit: int) -> str:
@@ -119,10 +122,13 @@ def search_text(
     root = worktree.resolve()
     if not root.is_dir():
         raise FileToolError("worktree is not a directory")
+    if query == "":
+        raise FileToolError("empty query")
 
     body = ""
     match_count = 0
     files_seen = 0
+    truncated = False
 
     for file_path, relative in _allowed_files(root, read_paths):
         if files_seen >= MAX_FILES:
@@ -137,7 +143,8 @@ def search_text(
         )
         if result is None:
             continue
-        records, overflow = result
+        records, file_truncated, match_overflow = result
+        truncated = truncated or file_truncated
 
         for record in records:
             if match_count >= MAX_MATCHES:
@@ -151,7 +158,7 @@ def search_text(
             body += addition
             match_count += 1
 
-        if overflow:
+        if match_overflow:
             return Observation(body=body, truncated=True)
 
-    return Observation(body=body, truncated=False)
+    return Observation(body=body, truncated=truncated)

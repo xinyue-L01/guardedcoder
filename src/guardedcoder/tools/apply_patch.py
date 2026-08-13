@@ -157,13 +157,15 @@ def _apply_hunks(original: str, hunks: tuple[_Hunk, ...]) -> str:
             raise PatchError("hunk does not apply")
         output.extend(lines[cursor:target])
         cursor = target
+        last_tag = ""
         for raw in hunk.lines:
             if raw.startswith("\\"):
-                if output:
+                if last_tag in {"+", " "} and output:
                     output[-1] = _strip_nl(output[-1])
                 continue
             tag = raw[:1]
             body = raw[1:]
+            last_tag = tag
             if tag == " ":
                 if cursor >= len(lines) or _strip_nl(lines[cursor]) != body:
                     raise PatchError("hunk does not apply")

@@ -1,5 +1,8 @@
 from pathlib import Path
 
+import pytest
+
+from guardedcoder.errors import FileToolError
 from guardedcoder.tools.search_text import (
     MAX_FILES,
     MAX_MATCHES,
@@ -115,6 +118,35 @@ def test_search_text_bounds_single_line_read(tmp_path: Path) -> None:
     result = search_text(tmp_path, "needle")
 
     assert len(result.body.encode("utf-8")) <= MAX_OUTPUT_BYTES
+    assert result.truncated is True
+
+
+def test_search_text_rejects_empty_query(tmp_path: Path) -> None:
+    (tmp_path / "a.txt").write_text("hello\n", encoding="utf-8")
+
+    with pytest.raises(FileToolError):
+        search_text(tmp_path, "")
+
+
+def test_search_text_large_nonmatching_file_does_not_hide_later_hits(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "aaa.txt").write_bytes(b"x" * (MAX_OUTPUT_BYTES + 8))
+    (tmp_path / "zzz.txt").write_text("needle later\n", encoding="utf-8")
+
+    result = search_text(tmp_path, "needle")
+
+    assert "zzz.txt:1:needle later" in result.body.splitlines()
+    assert result.truncated is True
+
+
+def test_search_text_mid_utf8_cut_keeps_prefix_match(tmp_path: Path) -> None:
+    payload = b"needle " + (b"x" * (MAX_OUTPUT_BYTES - 8)) + "界".encode("utf-8")
+    (tmp_path / "cut.txt").write_bytes(payload)
+
+    result = search_text(tmp_path, "needle")
+
+    assert result.body.startswith("cut.txt:1:needle")
     assert result.truncated is True
 
 
