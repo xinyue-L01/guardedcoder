@@ -81,4 +81,17 @@ def connect(path: str | Path) -> sqlite3.Connection:
     conn.isolation_level = None
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(_SCHEMA)
+    _migrate_execution_windows(conn)
     return conn
+
+
+def _migrate_execution_windows(conn: sqlite3.Connection) -> None:
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(execution_windows)")}
+    if "opened_revision" not in cols:
+        conn.execute(
+            "ALTER TABLE execution_windows ADD COLUMN opened_revision INTEGER"
+        )
+    if "source_run_state" not in cols:
+        conn.execute(
+            "ALTER TABLE execution_windows ADD COLUMN source_run_state TEXT"
+        )

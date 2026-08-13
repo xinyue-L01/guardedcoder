@@ -110,17 +110,18 @@ def recover(
         opened_revision = win["opened_revision"]
         source_run_state = win["source_run_state"]
         kind = win["action_kind"]
+        live_ok = (
+            source_run_state == "verifying" and task["run_state"] == "verifying"
+        ) or (
+            source_run_state == "running" and task["run_state"] == "executing_action"
+        )
         inconsistent = (
-            opened_revision != expected_revision
+            opened_revision is None
+            or source_run_state not in {"running", "verifying"}
+            or opened_revision != expected_revision
             or opened_revision != task["state_revision"]
             or task["run_state"] in _TERMINAL
-            or (
-                task["run_state"] not in {"executing_action", "verifying"}
-            )
-            or (
-                source_run_state == "verifying"
-                and task["run_state"] != "verifying"
-            )
+            or not live_ok
         )
         new_status = "error"
         new_run_state = "error"
@@ -130,11 +131,19 @@ def recover(
         elif kind != "apply_patch":
             pass
         else:
-            preimage = json.loads(win["preimage_json"]) if win["preimage_json"] else None
-            postimage = json.loads(win["postimage_json"]) if win["postimage_json"] else None
+            try:
+                preimage = (
+                    json.loads(win["preimage_json"]) if win["preimage_json"] else None
+                )
+                postimage = (
+                    json.loads(win["postimage_json"]) if win["postimage_json"] else None
+                )
+            except (TypeError, json.JSONDecodeError, ValueError):
+                preimage, postimage = None, None
             if (
-                not preimage
-                or not postimage
+                not isinstance(preimage, dict)
+                or not isinstance(postimage, dict)
+                or not preimage
                 or set(preimage) != set(postimage)
             ):
                 pass

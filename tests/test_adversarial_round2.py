@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import sqlite3
 import threading
 from pathlib import Path
@@ -277,6 +278,7 @@ def test_concurrent_recover_does_not_double_authorize(tmp_path) -> None:
     assert task["run_state"] == "executing_action"
     assert task["state_revision"] == 3
     assert RecoverDecision.recorded_success not in results
+    assert RecoverDecision.recorded_error not in results
     conn.close()
 
 
@@ -311,6 +313,48 @@ def test_delete_same_path_set(tmp_path) -> None:
     )
 
 
+def test_corrupt_image_json_records_error(tmp_path) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "a.txt").write_bytes(b"after")
+    conn = connect(tmp_path / "g.db")
+    _create_ws(conn, ws)
+    window_id = _open_patch(
+        conn,
+        preimage={"a.txt": _mark(exists=True, body=b"before")},
+        postimage={"a.txt": _mark(exists=True, body=b"after")},
+    )
+    conn.execute(
+        "UPDATE execution_windows SET postimage_json = ? WHERE window_id = ?",
+        ("not-json", window_id),
+    )
+    assert recover(conn, task_id="t1", workspace=ws, expected_revision=3) == (
+        RecoverDecision.recorded_error
+    )
+    assert _task(conn)["run_state"] == "error"
+
+
+def test_unknown_source_run_state_records_error(tmp_path) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "a.txt").write_bytes(b"after")
+    conn = connect(tmp_path / "g.db")
+    _create_ws(conn, ws)
+    window_id = _open_patch(
+        conn,
+        preimage={"a.txt": _mark(exists=True, body=b"before")},
+        postimage={"a.txt": _mark(exists=True, body=b"after")},
+    )
+    conn.execute(
+        "UPDATE execution_windows SET source_run_state = ? WHERE window_id = ?",
+        ("succeeded", window_id),
+    )
+    assert recover(conn, task_id="t1", workspace=ws, expected_revision=3) == (
+        RecoverDecision.recorded_error
+    )
+    assert _task(conn)["run_state"] == "error"
+
+
 def test_request_approval_is_single_atomic_commit(tmp_path) -> None:
     path = tmp_path / "g.db"
     conn = connect(path)
@@ -343,3 +387,79 @@ def test_request_approval_is_single_atomic_commit(tmp_path) -> None:
     assert pending[0] == 0
     assert pending[1] == task[1]
     conn2.close()
+
+
+def test_legacy_window_columns_migrate_without_indexerror(tmp_path) -> None:
+    path = tmp_path / "legacy.db"
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "a.txt").write_bytes(b"after")
+    raw = sqlite3.connect(path)
+    raw.executescript(
+        """
+        CREATE TABLE tasks (
+            task_id TEXT PRIMARY KEY,
+            run_state TEXT NOT NULL,
+            artifact_state TEXT NOT NULL,
+            repo_path TEXT NOT NULL,
+            base_commit TEXT NOT NULL,
+            worktree_identity TEXT NOT NULL,
+            envelope_hash TEXT NOT NULL,
+            state_revision INTEGER NOT NULL,
+            remaining_steps INTEGER NOT NULL
+        );
+        CREATE TABLE permits (
+            permit_id TEXT PRIMARY KEY,
+            task_id TEXT NOT NULL REFERENCES tasks(task_id),
+            action_id TEXT NOT NULL,
+            fingerprint TEXT NOT NULL,
+            envelope_hash TEXT NOT NULL,
+            state_revision INTEGER NOT NULL,
+            consumed INTEGER NOT NULL DEFAULT 0,
+            pending_action_id TEXT
+        );
+        CREATE TABLE execution_windows (
+            window_id TEXT PRIMARY KEY,
+            task_id TEXT NOT NULL REFERENCES tasks(task_id),
+            permit_id TEXT NOT NULL REFERENCES permits(permit_id),
+            action_kind TEXT NOT NULL,
+            status TEXT NOT NULL,
+            preimage_json TEXT,
+            postimage_json TEXT
+        );
+        """
+    )
+    raw.execute(
+        "INSERT INTO tasks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "t1",
+            "executing_action",
+            "worktree_present",
+            "/orig-repo",
+            "abc",
+            str(ws.resolve()),
+            "env-1",
+            3,
+            9,
+        ),
+    )
+    raw.execute(
+        "INSERT INTO permits VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        ("p1", "t1", "a1", "fp1", "env-1", 2, 1, None),
+    )
+    pre = json.dumps({"a.txt": {"exists": True, "sha256": _sha(b"before")}})
+    post = json.dumps({"a.txt": {"exists": True, "sha256": _sha(b"after")}})
+    raw.execute(
+        "INSERT INTO execution_windows VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ("w1", "t1", "p1", "apply_patch", "executing_action", pre, post),
+    )
+    raw.commit()
+    raw.close()
+    conn = connect(path)
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(execution_windows)")}
+    assert "opened_revision" in cols
+    assert "source_run_state" in cols
+    assert recover(conn, task_id="t1", workspace=ws, expected_revision=3) == (
+        RecoverDecision.recorded_error
+    )
+    assert _task(conn)["run_state"] == "error"
