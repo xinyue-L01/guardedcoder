@@ -1,7 +1,10 @@
 import hashlib
 import json
 
+import pytest
+
 from guardedcoder.config.synthesize import synthesize_envelope
+from guardedcoder.errors import ConfigError
 from guardedcoder.models.config import AppConfig
 from guardedcoder.models.envelope import Envelope
 
@@ -98,3 +101,19 @@ def test_config_digest_is_sha256_of_canonical_appconfig() -> None:
     unchanged = synthesize_envelope(cfg)
     assert unchanged.config_digest == expected
     assert unchanged.max_steps == cfg.max_steps
+
+
+def test_unknown_cli_override_raises_config_error() -> None:
+    with pytest.raises(ConfigError):
+        synthesize_envelope(_config(), {"max_steps": 5, "allow_delete": False})
+
+
+def test_empty_and_none_cli_overrides_are_legal() -> None:
+    cfg = _config()
+    assert synthesize_envelope(cfg, {}).max_steps == cfg.max_steps
+    assert synthesize_envelope(cfg, None).max_steps == cfg.max_steps
+
+
+def test_invalid_cli_override_raises_config_error() -> None:
+    with pytest.raises(ConfigError):
+        synthesize_envelope(_config(), {"max_steps": "nope"})
