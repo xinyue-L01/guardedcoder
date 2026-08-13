@@ -313,6 +313,39 @@ def add_decision(
     return record
 
 
+def add_task_summary(
+    conn: sqlite3.Connection,
+    *,
+    repo_id: str,
+    content: str,
+    paths: Iterable[str] = (),
+    tags: Iterable[str] = (),
+    source: str = "harness",
+    created_at: datetime | None = None,
+) -> MemoryRecord:
+    record = _prepare_record(
+        repo_id=repo_id,
+        record_type=MemoryType.TASK_SUMMARY,
+        content=content,
+        rationale=None,
+        paths=paths,
+        tags=tags,
+        source=source,
+        trust_label=TrustLabel.HARNESS_GENERATED,
+        created_at=created_at,
+    )
+    with write_txn(conn):
+        _insert_record(conn, record)
+    return record
+
+
+def reject_secret_text(value: str) -> None:
+    if not isinstance(value, str):
+        raise TypeError("value must be str")
+    if _contains_suspected_secret(value):
+        raise MemoryValidationError("memory field rejected: suspected secret")
+
+
 def _record_from_row(row: tuple[object, ...]) -> MemoryRecord:
     return MemoryRecord(
         record_id=str(row[0]),
