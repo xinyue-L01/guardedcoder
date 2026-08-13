@@ -61,7 +61,7 @@ Human edits: <none|简述>
 | T05 | 指纹 | done | bf52b007645c0ae165066efd5482b1aa0e36a5a6 | WT-A / PR-A |
 | T06 | AppConfig | done | a09cbdb30c1e8be9ccde85528c04a2f406be29c9 | WT-B / PR-B |
 | T07 | TOML 校验 | done | 2b882a53bc33b517a514e923c0f8d3f94ff9a155 | WT-B / PR-B |
-| T08 | 信封合成 | pending | — | WT-B / PR-B |
+| T08 | 信封合成 | done | d7658c0e66cefeffddda3ce44af088437729dfda | WT-B / PR-B |
 | T09 | 配置不能放宽硬规则 | pending | — | WT-B / PR-B |
 | T10 | MockLLM | pending | — | WT-C / PR-C |
 | T11 | OpenAICompatibleLLM | pending | — | WT-C / PR-C |
@@ -434,6 +434,17 @@ python -m piptools compile --generate-hashes --allow-unsafe --index-url https://
 ---
 
 ## Task 08: 合成信封
+
+**状态：** done · 实现 commit `012bd06d35c975682536e9239ae98993c7a611b4`；覆盖校验 `d7658c0e66cefeffddda3ce44af088437729dfda`
+
+- [x] 写失败测试
+- [x] 跑红灯命令，记录预期失败
+- [x] 最小实现
+- [x] 跑绿灯命令
+- [x] 重构并回归测试
+- [x] spec 合规审查（Critical 必修）
+- [x] 代码质量审查（Critical 必修）
+- [x] commit（含 Subagent / Human edits）+ 追加 `AGENT_LOG.md` + 更新本 PLAN 状态栏
 
 **依赖：** T07。路径：`config/synthesize.py`, `tests/test_synthesize.py`  
 失败测试：CLI 覆盖 `max_steps`；未覆盖字段等于配置默认；最终有效值而非 diff。

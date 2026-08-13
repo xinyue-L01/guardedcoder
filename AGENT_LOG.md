@@ -137,9 +137,19 @@
 - **绿灯：** 修复后 `test_config_load` 12 passed；全量 **30 passed**
 - **实现 commit：** `856630970d6a93f634fefa5bdd95958dcc06aeb7`；decode `2b882a53bc33b517a514e923c0f8d3f94ff9a155`
 
+---
 
+## 2026-08-14 · T08 合成信封（WT-B）
 
-
+- **Task：** T08（WT-B / `feat/b-config`）。未执行 T09。
+- **Implementer：** `4ffb7183-eeab-46f5-9a1c-62efd61a13d8`
+- **Fixer：** `7bf90a91-fe69-43de-853b-b49f90d289a7`（未知 CLI 键与非法覆盖 → ConfigError）
+- **Spec reviewer：** `52947829-054a-4d6a-ba62-b40b78570bad` → Approved
+- **Quality reviewer：** 初审 `9bea2213-d773-4499-b565-56a4e9bd6739` Needs fixes（Important×2）；复审 `557b4026-241c-4211-aa8a-4987a9ae1f85` Approved。Minor：config_digest 测试复制算法。
+- **Human edits：** none
+- **红灯：** 初版 `ModuleNotFoundError: guardedcoder.config.synthesize`；修复前未知键 `DID NOT RAISE ConfigError`，非法 `max_steps` 漏出 `ValidationError`。
+- **绿灯：** 修复后 `test_synthesize` 7 passed；全量 **37 passed**。
+- **实现 commit：** `012bd06d35c975682536e9239ae98993c7a611b4`；覆盖校验 `d7658c0e66cefeffddda3ce44af088437729dfda`
 
 
 
