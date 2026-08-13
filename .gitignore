@@ -1,0 +1,49 @@
+# Secrets and local env
+.env
+.env.*
+!.env.example
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Harness runtime (task state, managed worktrees)
+.guardedcoder/
+
+# Git worktrees created during implementation (PLAN)
+.worktrees/
+
+# Local databases
+*.sqlite
+*.db
+*.sqlite3
+
+# Local credentials
+*.pem
+*.key
+credentials.json
+.secrets/
+
+# Editor / OS junk
+*~
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+*.orig
+*.tmp
