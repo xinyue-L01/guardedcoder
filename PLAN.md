@@ -15,7 +15,7 @@
 - TDD：先红后绿；保存红灯证据。
 - 每个实现 task 一个新鲜 subagent；commit/PR 注明来源与人工修改。
 - 每个大模块一个 worktree / PR；**worktree 必须从依赖 PR 已合并的最新 `main` 创建**，禁止一次性从旧 base 开全部 worktree。
-- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。下一实现 task 为 T06（PR-B；以状态表为准）。本 PR-A 在 T05 停止。
+- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。下一实现 task 为 T12（PR-D；以状态表为准）。本 PR-C 在 T11 停止。
 - API Key 只进 keyring；不进 TOML/Git/日志/状态/记忆/Mock。
 - 五工具 + `finish`；不为演示新增 network/push/publish。
 - 完整 patch 禁止静默截断。
@@ -59,10 +59,10 @@ Human edits: <none|简述>
 | T03 | 动作 schema | done | 92a671f0c9afed19fe714a708fcf24e3af6d27fb | WT-A / PR-A |
 | T04 | 信封模型 | done | 95d11d261233ee05336019567480f6e2a8044d68 | WT-A / PR-A |
 | T05 | 指纹 | done | bf52b007645c0ae165066efd5482b1aa0e36a5a6 | WT-A / PR-A |
-| T06 | AppConfig | pending | — | WT-B / PR-B |
-| T07 | TOML 校验 | pending | — | WT-B / PR-B |
-| T08 | 信封合成 | pending | — | WT-B / PR-B |
-| T09 | 配置不能放宽硬规则 | pending | — | WT-B / PR-B |
+| T06 | AppConfig | done | a09cbdb30c1e8be9ccde85528c04a2f406be29c9 | WT-B / PR-B |
+| T07 | TOML 校验 | done | 2b882a53bc33b517a514e923c0f8d3f94ff9a155 | WT-B / PR-B |
+| T08 | 信封合成 | done | d7658c0e66cefeffddda3ce44af088437729dfda | WT-B / PR-B |
+| T09 | 配置不能放宽硬规则 | done | 840129835f79aa89e0ed95e15b7df337f02a99ba | WT-B / PR-B |
 | T10 | MockLLM | done | 1fbba589d6e4a919756cd8e7765c3bb14cdddf0e | WT-C / PR-C |
 | T11 | OpenAICompatibleLLM | done | 44edd47821598ebd4e898c0e1a9ef91c7965e488 | WT-C / PR-C |
 | T12 | 路径围栏 | pending | — | WT-D / PR-D |
@@ -435,12 +435,34 @@ python -m piptools compile --generate-hashes --allow-unsafe --index-url https://
 
 ## Task 08: 合成信封
 
+**状态：** done · 实现 commit `012bd06d35c975682536e9239ae98993c7a611b4`；覆盖校验 `d7658c0e66cefeffddda3ce44af088437729dfda`
+
+- [x] 写失败测试
+- [x] 跑红灯命令，记录预期失败
+- [x] 最小实现
+- [x] 跑绿灯命令
+- [x] 重构并回归测试
+- [x] spec 合规审查（Critical 必修）
+- [x] 代码质量审查（Critical 必修）
+- [x] commit（含 Subagent / Human edits）+ 追加 `AGENT_LOG.md` + 更新本 PLAN 状态栏
+
 **依赖：** T07。路径：`config/synthesize.py`, `tests/test_synthesize.py`  
 失败测试：CLI 覆盖 `max_steps`；未覆盖字段等于配置默认；最终有效值而非 diff。
 
 ---
 
 ## Task 09: 配置不能放宽硬规则
+
+**状态：** done · 实现 commit `840129835f79aa89e0ed95e15b7df337f02a99ba`
+
+- [x] 写失败测试
+- [x] 跑红灯命令，记录预期失败
+- [x] 最小实现
+- [x] 跑绿灯命令
+- [x] 重构并回归测试
+- [x] spec 合规审查（Critical 必修）
+- [x] 代码质量审查（Critical 必修）
+- [x] commit（含 Subagent / Human edits）+ 追加 `AGENT_LOG.md` + 更新本 PLAN 状态栏
 
 **依赖：** T08。路径：`governance/hard_rules.py`, `tests/test_config_hard_rules.py`  
 失败测试：`pip`+`install` 或 push/publish profile → ConfigError。
@@ -449,6 +471,8 @@ python -m piptools compile --generate-hashes --allow-unsafe --index-url https://
 
 ## Task 10: MockLLM
 
+**状态：** done · 实现 commit `1fbba589d6e4a919756cd8e7765c3bb14cdddf0e`
+
 **依赖：** T05。路径：`llm/port.py`, `llm/mock.py`, `tests/test_mock_llm.py`  
 序列响应；耗尽异常；messages 含拼接假 key 则 `SecretLeakError`。  
 T30 将扩展门控行为，本 task 只做序列。
@@ -456,6 +480,8 @@ T30 将扩展门控行为，本 task 只做序列。
 ---
 
 ## Task 11: OpenAICompatibleLLM
+
+**状态：** done · 实现 commit `8afe6c20d14b84f3c1211bb63e03e7d19cd8fcb5`；scheme `44edd47821598ebd4e898c0e1a9ef91c7965e488`
 
 **依赖：** T10。路径：`llm/openai_compat.py`, `tests/test_openai_compat.py`  
 远程 HTTP+key 拒绝且不发请求；loopback HTTP 允许；`follow_redirects=False`；3xx 不跟。  

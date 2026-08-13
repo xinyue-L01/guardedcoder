@@ -114,13 +114,66 @@
 
 ---
 
+## 2026-08-14 · T06 AppConfig（WT-B）
+
+- **Implementer：** `797bf1c9-38f7-49c6-a6ae-bf87b8b6fa46`
+- **Fixer：** `3360dc32-55e1-4d48-a547-ef64a76629c8`（假 key 改为拼接）
+- **Spec reviewer：** `28a85fb0-2ff8-43a0-ac1a-33fec59cb00a` → Approved（Minor 假 key 已修）
+- **Quality reviewer：** `d62ec361-4e99-43d4-974a-2f14bbbb505a` → Approved
+- **Human edits：** none
+- **红灯：** `ModuleNotFoundError: guardedcoder.models.config`
+- **绿灯：** `test_appconfig` 3 passed；全量 **18 passed**
+- **实现 commit：** `16ee5ab711a8e4797395f6bedf949d572ab4d1b9`；假 key `a09cbdb30c1e8be9ccde85528c04a2f406be29c9`
+
+---
+
+## 2026-08-14 · T07 TOML fail closed（WT-B）
+
+- **Implementer：** `763cabac-c673-4216-9a62-2f20103b6b67`
+- **Fixer：** `c899559d-521d-45d4-a952-fb5ff164700a`（UnicodeDecodeError→ConfigError）
+- **Spec reviewer：** `38d4dd69-cfa4-4e18-baed-f3ddaa0c61af` → Approved
+- **Quality reviewer：** 初审 `9fac507d-6064-4db1-84e8-303707a295f6` Needs fixes；复审 `43497b27-00f8-4ea0-aa39-9aceea224120` Approved
+- **Human edits：** none
+- **红灯：** `ModuleNotFoundError: No module named 'guardedcoder.config'`
+- **绿灯：** 修复后 `test_config_load` 12 passed；全量 **30 passed**
+- **实现 commit：** `856630970d6a93f634fefa5bdd95958dcc06aeb7`；decode `2b882a53bc33b517a514e923c0f8d3f94ff9a155`
+
+---
+
+## 2026-08-14 · T08 合成信封（WT-B）
+
+- **Task：** T08（WT-B / `feat/b-config`）。未执行 T09。
+- **Implementer：** `4ffb7183-eeab-46f5-9a1c-62efd61a13d8`
+- **Fixer：** `7bf90a91-fe69-43de-853b-b49f90d289a7`（未知 CLI 键与非法覆盖 → ConfigError）
+- **Spec reviewer：** `52947829-054a-4d6a-ba62-b40b78570bad` → Approved
+- **Quality reviewer：** 初审 `9bea2213-d773-4499-b565-56a4e9bd6739` Needs fixes（Important×2）；复审 `557b4026-241c-4211-aa8a-4987a9ae1f85` Approved。Minor：config_digest 测试复制算法。
+- **Human edits：** none
+- **红灯：** 初版 `ModuleNotFoundError: guardedcoder.config.synthesize`；修复前未知键 `DID NOT RAISE ConfigError`，非法 `max_steps` 漏出 `ValidationError`。
+- **绿灯：** 修复后 `test_synthesize` 7 passed；全量 **37 passed**。
+- **实现 commit：** `012bd06d35c975682536e9239ae98993c7a611b4`；覆盖校验 `d7658c0e66cefeffddda3ce44af088437729dfda`
+
+---
+
+## 2026-08-14 · T09 配置不能放宽硬规则（WT-B）
+
+- **Task：** T09（WT-B / `feat/b-config`）。未执行 T12。未合并 PR-B。
+- **Implementer：** `9c5b16dc-f902-4bc4-af5f-76b5446bdd85`
+- **Spec reviewer：** `87f9be7e-8aac-4f8b-8a05-d9a6e50344da` → Approved。Minor：`pip` 精确 token，不覆盖 `pip3`/`pip.exe`。
+- **Quality reviewer：** `325ab50d-71c0-4d29-b58f-f3f708bae69f` → Approved；Critical/Important/Minor = 0。
+- **Human edits：** none
+- **红灯：** `ModuleNotFoundError: No module named 'guardedcoder.governance'`
+- **绿灯：** `test_config_hard_rules` 7 passed；全量 **44 passed**。
+- **实现 commit：** `840129835f79aa89e0ed95e15b7df337f02a99ba`
+
+---
+
 ## 2026-08-14 · T10 MockLLM（WT-C）
 
 - **Implementer：** `5019ad99-f365-46ff-a182-10f79ff1842a`
 - **Spec reviewer：** `1e45a676-fc6e-4b1a-86b6-47199fe8d2b6` → Approved
 - **Quality reviewer：** `62e14274-592f-4195-9131-dbe5a6b749fc` → Approved
 - **Human edits：** none
-- **红灯：** 见 task-10-report（import 失败）
+- **红灯：** `SecretLeakError` / LLM 模块导入失败
 - **绿灯：** 全量 **19 passed**
 - **实现 commit：** `1fbba589d6e4a919756cd8e7765c3bb14cdddf0e`
 
@@ -133,11 +186,9 @@
 - **Spec reviewer：** 初审 `684f3055-4e75-446e-9d23-851c12c2feb6` Needs fixes；复审 `8ff3abaa-1b06-48fe-8cb6-95bf5169bf37` Spec ✅
 - **Quality reviewer：** `22f9d011-89a5-441a-8b92-cc02ad1fa6c1` → Approved
 - **Human edits：** none
+- **红灯：** `RemoteKeyHttpError` / openai_compat 模块导入失败
 - **绿灯：** 修复后 `test_openai_compat` 8 passed；全量 **27 passed**
 - **实现 commit：** `8afe6c20d14b84f3c1211bb63e03e7d19cd8fcb5`；scheme `44edd47821598ebd4e898c0e1a9ef91c7965e488`
-
-
-
 
 
 
