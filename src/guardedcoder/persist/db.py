@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS recovered_attempt_claims (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_recovered_claim_exclusive
-    ON recovered_attempt_claims(task_id, window_id, state_revision, attempt_id);
+    ON recovered_attempt_claims(task_id, window_id, state_revision);
 
 CREATE TABLE IF NOT EXISTS audit_events (
     event_id TEXT PRIMARY KEY,
@@ -95,6 +95,7 @@ def connect(path: str | Path) -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(_SCHEMA)
     _migrate_execution_windows(conn)
+    _migrate_recovered_claims(conn)
     return conn
 
 
@@ -113,3 +114,16 @@ def _migrate_execution_windows(conn: sqlite3.Connection) -> None:
             "ALTER TABLE execution_windows ADD COLUMN execution_started INTEGER "
             "NOT NULL DEFAULT 0"
         )
+
+
+def _migrate_recovered_claims(conn: sqlite3.Connection) -> None:
+    columns = [
+        row[2] for row in conn.execute("PRAGMA index_info(idx_recovered_claim_exclusive)")
+    ]
+    if columns == ["task_id", "window_id", "state_revision"]:
+        return
+    conn.execute("DROP INDEX IF EXISTS idx_recovered_claim_exclusive")
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_recovered_claim_exclusive "
+        "ON recovered_attempt_claims(task_id, window_id, state_revision)"
+    )

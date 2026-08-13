@@ -388,7 +388,7 @@
 - **红灯：** 缺失模块 / 行范围 / `.env` 名 / `read_paths` / `.git`（`.superpowers/sdd/t21-red.txt`、`t21-fix-red.txt`）
 - **绿灯：** T21 目标 26+；全量当时 **206 passed, 2 skipped**；后续累计见 T24。
 - **实现 commit：** `bf019feeda436e200cbe1f173904c4c591e2634d`
-- **修复 commits：** `3dcf1d72cbd2797c3c4b780cab4449e684b028fe`；`e5a085b6b8b794381b5db83e72b152be50f0aac5`
+- **修复 commits：** `3dcf1d72cbd2797c3c4b780cab4449e684b028fe`；`e5a085b6b8b794381b5db83e72b152be50f0aac5`；`27fd75d`（空 query、大文件不中断后续命中、截断 UTF-8 保留前缀）
 
 ---
 
@@ -402,7 +402,7 @@
 - **红灯：** `ImportError: PatchError`（`.superpowers/sdd/t22-red.txt`）
 - **绿灯：** `test_apply_patch` 7 passed / 1 skipped；全量当时 **213 passed, 3 skipped**
 - **实现 commit：** `b1794699ed25c1d6f2b457105be5a89964d19eca`
-- **修复 commit：** `fef178488696bf09f7e5a7f6a22b827da48bf622`
+- **修复 commit：** `fef178488696bf09f7e5a7f6a22b827da48bf622`；`27fd75d`（`-` 行后 `\\ No newline` 不剥上一行）
 
 ---
 
@@ -423,10 +423,12 @@
 
 - **Task：** T24。未执行 T25。未合并 PR-F。
 - **Implementer：** `8f380e59-0ee8-47a9-b0f6-2f489643fe08`
+- **Spec reviewer：** `f9e740e8` C=0 I=0。
+- **Quality reviewer：** `9b79b77a` C=1 I=2（不同 `attempt_id` 拆排他；claim 先于 apply 消费；读工具可复用 apply 窗）。对抗 `41cc8804` 同 C=1，另指出 `run_command` 未关窗会再跑。
 - **硬门槛测试 1–8：** 双连接仅一 claim；双 recover 不得双执行；无 claim 零写盘；错/旧 claim 拒绝；claim 一次性；混合 pre/post error；run_command recover 不重跑；正常 permit 路径无需 claim。均已通过。
 - **Human edits：** none
 - **红灯：** 缺 `executor` / `claim` / `UnauthorizedError`
-- **绿灯：** `test_executor` 10 passed；全量 **232 passed, 3 skipped**
+- **绿灯：** `test_executor` 初版 10 passed；复审修复后 14 passed；全量 **242 passed, 3 skipped**
 - **实现 commit：** `7afede0369ac0326931d07cee16139161718f110`
 - **推送：** `feat/f-tools`（不合并、不执行 T25）
 

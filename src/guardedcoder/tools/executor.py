@@ -24,6 +24,14 @@ from guardedcoder.tools.read_file import read_file
 from guardedcoder.tools.run_command import run_command
 from guardedcoder.tools.search_text import search_text
 
+_ACTION_KIND = {
+    ListDirAction: "list_dir",
+    ReadFileAction: "read_file",
+    SearchTextAction: "search_text",
+    ApplyPatchAction: "apply_patch",
+    RunCommandAction: "run_command",
+}
+
 
 def _file_mark(workspace: Path, rel: str) -> dict[str, object]:
     path = workspace / rel
@@ -52,6 +60,8 @@ def _authorize(
     window_id: str,
     claim_id: str | None,
     action: Action,
+    envelope: Envelope | None,
+    task_dir: Path | None,
 ) -> sqlite3.Row | tuple:
     permit = conn.execute(
         "SELECT consumed, task_id FROM permits WHERE permit_id = ?",
@@ -71,12 +81,27 @@ def _authorize(
         or window[3] != "executing_action"
     ):
         raise UnauthorizedError("execution window is missing or inactive")
-    kind = window[2]
+    expected_kind = _ACTION_KIND.get(type(action))
+    if expected_kind is None or window[2] != expected_kind:
+        raise UnauthorizedError("window action mismatch")
     started = bool(window[4])
-    if isinstance(action, ApplyPatchAction) and kind != "apply_patch":
-        raise UnauthorizedError("window action mismatch")
-    if isinstance(action, RunCommandAction) and kind != "run_command":
-        raise UnauthorizedError("window action mismatch")
+    if isinstance(action, RunCommandAction):
+        if envelope is None:
+            raise UnauthorizedError("run_command requires a confirmed profile")
+        if not any(item.profile_id == action.profile_id for item in envelope.profiles):
+            raise UnauthorizedError("unknown command profile")
+        if task_dir is None:
+            raise UnauthorizedError("run_command requires task_dir")
+        if started:
+            raise UnauthorizedError("run_command is not retryable")
+        cur = conn.execute(
+            "UPDATE execution_windows SET execution_started = 1 "
+            "WHERE window_id = ? AND execution_started = 0",
+            (window_id,),
+        )
+        if cur.rowcount != 1:
+            raise UnauthorizedError("run_command is not retryable")
+        return window
     if isinstance(action, ApplyPatchAction) and started:
         if claim_id is None:
             raise UnauthorizedError("recovered apply_patch requires a claim")
@@ -98,6 +123,21 @@ def _authorize(
             or claim[3] != task[0]
         ):
             raise UnauthorizedError("claim is missing, stale, or replayed")
+    if isinstance(action, ApplyPatchAction) and not started:
+        cur = conn.execute(
+            "UPDATE execution_windows SET execution_started = 1 "
+            "WHERE window_id = ? AND execution_started = 0",
+            (window_id,),
+        )
+        if cur.rowcount != 1:
+            raise UnauthorizedError("recovered apply_patch requires a claim")
+    return window
+
+
+def _consume_claim(conn: sqlite3.Connection, claim_id: str | None) -> None:
+    if claim_id is None:
+        return
+    with write_txn(conn):
         cur = conn.execute(
             "UPDATE recovered_attempt_claims SET consumed = 1 "
             "WHERE claim_id = ? AND consumed = 0",
@@ -105,12 +145,6 @@ def _authorize(
         )
         if cur.rowcount != 1:
             raise UnauthorizedError("claim is missing, stale, or replayed")
-    if isinstance(action, ApplyPatchAction) and not started:
-        conn.execute(
-            "UPDATE execution_windows SET execution_started = 1 WHERE window_id = ?",
-            (window_id,),
-        )
-    return window
 
 
 def execute(
@@ -133,16 +167,21 @@ def execute(
             window_id=window_id,
             claim_id=claim_id,
             action=action,
+            envelope=envelope,
+            task_dir=task_dir,
         )
 
     if isinstance(action, ApplyPatchAction):
         preimage = json.loads(window[5]) if window[5] else None
         postimage = json.loads(window[6]) if window[6] else None
         if _matches(worktree, postimage):
+            _consume_claim(conn, claim_id)
             return Observation(body="already applied", truncated=False)
         if not _matches(worktree, preimage):
             raise UnauthorizedError("pre/post image mismatch")
-        return apply_patch(worktree, action.diff).observation
+        observation = apply_patch(worktree, action.diff).observation
+        _consume_claim(conn, claim_id)
+        return observation
 
     if isinstance(action, ListDirAction):
         return list_dir(worktree, action.path)
@@ -152,7 +191,7 @@ def execute(
         read_paths = envelope.read_paths if envelope is not None else None
         return search_text(worktree, action.query, read_paths=read_paths)
     if isinstance(action, RunCommandAction):
-        if envelope is None:
+        if envelope is None or task_dir is None:
             raise UnauthorizedError("run_command requires a confirmed profile")
         profile = next(
             (item for item in envelope.profiles if item.profile_id == action.profile_id),
@@ -160,7 +199,5 @@ def execute(
         )
         if profile is None:
             raise UnauthorizedError("unknown command profile")
-        if task_dir is None:
-            raise UnauthorizedError("run_command requires task_dir")
         return run_command(worktree, profile, task_dir=task_dir)
     raise UnauthorizedError("unsupported action")
