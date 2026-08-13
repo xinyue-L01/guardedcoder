@@ -51,6 +51,16 @@ def test_two_file_second_hunk_fail_changes_zero_files(tmp_path: Path) -> None:
     assert (tmp_path / "b.txt").read_bytes() == b"keep-b\n"
 
 
+def test_create_does_not_overwrite_existing_file(tmp_path: Path) -> None:
+    (tmp_path / "a.txt").write_bytes(b"keep\n")
+    diff = "--- /dev/null\n+++ b/a.txt\n@@ -0,0 +1,1 @@\n+new\n"
+
+    with pytest.raises(PatchError):
+        apply_patch(tmp_path, diff)
+
+    assert (tmp_path / "a.txt").read_bytes() == b"keep\n"
+
+
 def test_malformed_diff_changes_zero_files(tmp_path: Path) -> None:
     (tmp_path / "a.txt").write_bytes(b"stay\n")
 

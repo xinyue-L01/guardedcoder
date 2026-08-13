@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -179,6 +180,24 @@ def _read_text(path: Path) -> str:
         raise PatchError("binary file") from None
 
 
+def _write_nofollow(path: Path, data: bytes) -> None:
+    if path.is_symlink():
+        raise PatchError("symlink")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    if hasattr(os, "O_BINARY"):
+        flags |= os.O_BINARY
+    try:
+        fd = os.open(path, flags, 0o644)
+    except OSError:
+        raise PatchError("symlink") from None
+    try:
+        os.write(fd, data)
+    finally:
+        os.close(fd)
+
+
 def _mark_bytes(data: bytes | None) -> dict[str, object]:
     if data is None:
         return {"exists": False, "sha256": None}
@@ -244,6 +263,10 @@ def apply_patch(
             raise PatchError("delete not allowed")
 
         if creating:
+            assert new_rel is not None
+            dest = root / new_rel
+            if dest.exists() or dest.is_symlink():
+                raise PatchError("hunk does not apply")
             original = ""
         else:
             assert old_rel is not None
@@ -281,6 +304,14 @@ def apply_patch(
         for rel in all_paths
     }
 
+    originals: dict[str, bytes | None] = {}
+    for rel in planned:
+        path = root / rel
+        if path.is_file() and not path.is_symlink():
+            originals[rel] = path.read_bytes()
+        else:
+            originals[rel] = None
+
     temps: list[tuple[Path, Path]] = []
     try:
         for rel, data in planned.items():
@@ -291,7 +322,9 @@ def apply_patch(
                 raise PatchError("symlink")
             dest.parent.mkdir(parents=True, exist_ok=True)
             tmp = dest.with_name(dest.name + ".gc-patch-tmp")
-            tmp.write_bytes(data)
+            if tmp.exists() or tmp.is_symlink():
+                tmp.unlink()
+            _write_nofollow(tmp, data)
             temps.append((tmp, dest))
         for tmp, dest in temps:
             tmp.replace(dest)
@@ -300,7 +333,14 @@ def apply_patch(
                 target = root / rel
                 if target.is_symlink() or target.is_file():
                     target.unlink()
-    except OSError:
+    except (OSError, PatchError):
+        for rel, data in originals.items():
+            target = root / rel
+            if data is None:
+                if target.is_file() or target.is_symlink():
+                    target.unlink()
+            else:
+                _write_nofollow(target, data)
         for tmp, _dest in temps:
             tmp.unlink(missing_ok=True)
         raise PatchError("patch could not be written") from None
