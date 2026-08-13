@@ -124,6 +124,19 @@
 - **绿灯：** 全量 **19 passed**
 - **实现 commit：** `1fbba589d6e4a919756cd8e7765c3bb14cdddf0e`
 
+---
+
+## 2026-08-14 · T11 OpenAICompatibleLLM（WT-C）
+
+- **Implementer：** `c0d78c08-0b5c-4963-b278-6f9cc6d5e06a`
+- **Fixer：** `579b90dd-c4df-46eb-abd1-9c359bb1f996`（HTTP scheme 大小写）
+- **Spec reviewer：** 初审 `684f3055-4e75-446e-9d23-851c12c2feb6` Needs fixes；复审 `8ff3abaa-1b06-48fe-8cb6-95bf5169bf37` Spec ✅
+- **Quality reviewer：** `22f9d011-89a5-441a-8b92-cc02ad1fa6c1` → Approved
+- **Human edits：** none
+- **绿灯：** 修复后 `test_openai_compat` 8 passed；全量 **27 passed**
+- **实现 commit：** `8afe6c20d14b84f3c1211bb63e03e7d19cd8fcb5`；scheme `44edd47821598ebd4e898c0e1a9ef91c7965e488`
+
+
 
 
 
