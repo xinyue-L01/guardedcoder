@@ -4,3 +4,7 @@ class ActionParseError(Exception):
 
 class SecretLeakError(Exception):
     """Raised when a secret is detected in LLM messages."""
+
+
+class RemoteKeyHttpError(Exception):
+    """Raised when a configured key would be sent to a remote HTTP endpoint."""
