@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from pathlib import Path
 from typing import Sequence
 
 from guardedcoder.errors import ConfigError
@@ -20,7 +19,8 @@ class ProfileKind(StrEnum):
 
 
 def _normalize_token(token: str) -> str:
-    name = Path(token.casefold()).name
+    folded = token.casefold().replace("\\", "/")
+    name = folded.rsplit("/", 1)[-1]
     return name.removesuffix(".exe")
 
 

@@ -4,6 +4,7 @@ from guardedcoder.config.synthesize import synthesize_envelope
 from guardedcoder.errors import ConfigError
 from guardedcoder.governance.hard_rules import (
     ProfileKind,
+    _normalize_token,
     argv_is_hard_forbidden,
     classify_profile,
 )
@@ -100,6 +101,10 @@ def test_pip3_12_install_is_hard_forbidden() -> None:
 
 def test_pip_exe_install_is_hard_forbidden() -> None:
     assert argv_is_hard_forbidden(["pip.exe", "install", "pkg"])
+
+
+def test_normalize_token_strips_windows_path_and_exe() -> None:
+    assert _normalize_token(r"C:\Python\Scripts\pip.exe") == "pip"
 
 
 def test_windows_path_pip_install_is_hard_forbidden() -> None:
