@@ -60,12 +60,25 @@ CREATE TABLE IF NOT EXISTS execution_windows (
     preimage_json TEXT,
     postimage_json TEXT,
     opened_revision INTEGER NOT NULL,
-    source_run_state TEXT NOT NULL
+    source_run_state TEXT NOT NULL,
+    execution_started INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_window_active
     ON execution_windows(task_id)
     WHERE status IN ('executing_action', 'applying');
+
+CREATE TABLE IF NOT EXISTS recovered_attempt_claims (
+    claim_id TEXT PRIMARY KEY,
+    task_id TEXT NOT NULL REFERENCES tasks(task_id),
+    window_id TEXT NOT NULL REFERENCES execution_windows(window_id),
+    state_revision INTEGER NOT NULL,
+    attempt_id TEXT NOT NULL,
+    consumed INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_recovered_claim_exclusive
+    ON recovered_attempt_claims(task_id, window_id, state_revision, attempt_id);
 
 CREATE TABLE IF NOT EXISTS audit_events (
     event_id TEXT PRIMARY KEY,
@@ -94,4 +107,9 @@ def _migrate_execution_windows(conn: sqlite3.Connection) -> None:
     if "source_run_state" not in cols:
         conn.execute(
             "ALTER TABLE execution_windows ADD COLUMN source_run_state TEXT"
+        )
+    if "execution_started" not in cols:
+        conn.execute(
+            "ALTER TABLE execution_windows ADD COLUMN execution_started INTEGER "
+            "NOT NULL DEFAULT 0"
         )

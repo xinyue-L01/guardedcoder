@@ -60,3 +60,11 @@ class FenceError(FileToolError):
 
 class PatchError(FileToolError):
     """Raised when a unified diff cannot be previewed or applied atomically."""
+
+
+class UnauthorizedError(Exception):
+    """Raised when M5 is invoked without a consumed permit, window, or claim."""
+
+
+class ClaimConflictError(Exception):
+    """Raised when an exclusive recovered-attempt claim is already held."""
