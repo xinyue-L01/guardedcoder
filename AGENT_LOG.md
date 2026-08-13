@@ -329,7 +329,7 @@
 - **Human edits：** none
 - **红灯：** 改信封后仍能 consume 旧 permit
 - **绿灯：** 全量 **143 passed, 1 skipped**
-- **Follow-up commit：** TBD
+- **Follow-up commit：** `06486647a15c715fbc403937dfa06cd6db0ab054`
 
 
 
