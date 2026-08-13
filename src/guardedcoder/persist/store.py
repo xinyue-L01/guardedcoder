@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from guardedcoder.errors import StaleRevisionError
+from guardedcoder.errors import ApprovalError, StaleRevisionError
 from guardedcoder.persist.txn import write_txn
 
 _TASK_FIELDS = frozenset(
@@ -65,6 +65,19 @@ def update_task(
         "WHERE task_id = ? AND state_revision = ?"
     )
     with write_txn(conn):
+        if fields.get("run_state") == "awaiting_approval":
+            row = conn.execute(
+                "SELECT run_state, state_revision FROM tasks WHERE task_id = ?",
+                (task_id,),
+            ).fetchone()
+            if row is None or row[1] != expected_revision:
+                raise StaleRevisionError(
+                    f"stale revision for task {task_id}: expected {expected_revision}"
+                )
+            if row[0] != "awaiting_approval":
+                raise ApprovalError(
+                    "use request_approval to enter awaiting_approval"
+                )
         cur = conn.execute(sql, [*fields.values(), task_id, expected_revision])
         if cur.rowcount == 0:
             raise StaleRevisionError(

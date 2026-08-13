@@ -42,7 +42,12 @@ def _parse_marks(image: dict) -> dict[str, dict[str, object]]:
                 raise PermitInvalidError("sha256 mark must be 64 lowercase hex chars")
         elif digest is not None:
             raise PermitInvalidError("missing file mark must use sha256=null")
-        stored[_norm_key(rel)] = {"exists": exists, "sha256": digest}
+        if not isinstance(rel, str):
+            raise PermitInvalidError(f"illegal image path {rel!r}")
+        key = _norm_key(rel)
+        if key in stored:
+            raise PermitInvalidError(f"duplicate image path {rel!r}")
+        stored[key] = {"exists": exists, "sha256": digest}
     return stored
 
 

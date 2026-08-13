@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from guardedcoder.errors import ApprovalError, PermitInvalidError, StaleRevisionError
-from guardedcoder.persist.approval import insert_pending, request_approval
+from guardedcoder.persist.approval import approve, insert_pending, request_approval
 from guardedcoder.persist.db import connect
 from guardedcoder.persist.permit import consume_permit_and_open_window, create_permit
 from guardedcoder.persist.recover import RecoverDecision, recover
@@ -463,3 +463,76 @@ def test_legacy_window_columns_migrate_without_indexerror(tmp_path) -> None:
         RecoverDecision.recorded_error
     )
     assert _task(conn)["run_state"] == "error"
+
+
+def test_hitl_postimage_recover_records_success(tmp_path) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "a.txt").write_bytes(b"after")
+    conn = connect(tmp_path / "g.db")
+    _create_ws(conn, ws)
+    pending_id = request_approval(
+        conn,
+        task_id="t1",
+        fingerprint="fp1",
+        normalized_action_json="{}",
+        expected_revision=1,
+    )
+    approve(conn, "t1", "fp1")
+    permit_id = create_permit(
+        conn,
+        task_id="t1",
+        action_id="a1",
+        fingerprint="fp1",
+        envelope_hash="env-1",
+        expected_revision=2,
+        pending_action_id=pending_id,
+    )
+    consume_permit_and_open_window(
+        conn,
+        task_id="t1",
+        permit_id=permit_id,
+        expected_revision=3,
+        action_kind="apply_patch",
+        preimage={"a.txt": _mark(exists=True, body=b"before")},
+        postimage={"a.txt": _mark(exists=True, body=b"after")},
+    )
+    assert recover(conn, task_id="t1", workspace=ws, expected_revision=4) == (
+        RecoverDecision.recorded_success
+    )
+    assert _task(conn)["run_state"] == "running"
+
+
+def test_normalized_duplicate_image_keys_rejected(tmp_path) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    conn = connect(tmp_path / "g.db")
+    _create_ws(conn, ws)
+    with pytest.raises(PermitInvalidError):
+        _open_patch(
+            conn,
+            preimage={"a.txt": _mark(exists=True, body=b"before")},
+            postimage={
+                "a.txt": _mark(exists=True, body=b"after"),
+                "./a.txt": _mark(exists=True, body=b"before"),
+            },
+        )
+
+
+def test_update_task_cannot_enter_awaiting_approval(tmp_path) -> None:
+    conn = connect(tmp_path / "g.db")
+    create_task(
+        conn,
+        task_id="t1",
+        run_state="running",
+        artifact_state="worktree_present",
+        repo_path="/repo",
+        base_commit="abc",
+        worktree_identity="wt-1",
+        envelope_hash="env-1",
+        remaining_steps=4,
+    )
+    with pytest.raises(ApprovalError):
+        update_task(conn, "t1", 1, run_state="awaiting_approval")
+    assert _task(conn)["run_state"] == "running"
+    assert conn.execute("SELECT COUNT(*) FROM pending_actions").fetchone()[0] == 0

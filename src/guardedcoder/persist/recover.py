@@ -110,14 +110,14 @@ def recover(
         opened_revision = win["opened_revision"]
         source_run_state = win["source_run_state"]
         kind = win["action_kind"]
-        live_ok = (
-            source_run_state == "verifying" and task["run_state"] == "verifying"
-        ) or (
-            source_run_state == "running" and task["run_state"] == "executing_action"
-        )
+        live_ok = (source_run_state, task["run_state"]) in {
+            ("running", "executing_action"),
+            ("verifying", "verifying"),
+            ("awaiting_approval", "executing_action"),
+        }
         inconsistent = (
             opened_revision is None
-            or source_run_state not in {"running", "verifying"}
+            or source_run_state not in {"running", "verifying", "awaiting_approval"}
             or opened_revision != expected_revision
             or opened_revision != task["state_revision"]
             or task["run_state"] in _TERMINAL
