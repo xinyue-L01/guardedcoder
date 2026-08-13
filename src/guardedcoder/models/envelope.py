@@ -2,9 +2,18 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Self
+from typing import Annotated, Self
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, model_validator
+
+
+def _freeze_str_seq(value: object) -> tuple[str, ...]:
+    if isinstance(value, (list, tuple)):
+        items = tuple(value)
+        if not all(isinstance(item, str) for item in items):
+            raise TypeError("sequence items must be str")
+        return items
+    raise TypeError("expected list[str] or tuple[str, ...]")
 
 
 class _FrozenStrict(BaseModel):
@@ -13,7 +22,7 @@ class _FrozenStrict(BaseModel):
 
 class CommandProfile(_FrozenStrict):
     profile_id: str
-    argv_template: list[str]
+    argv_template: Annotated[tuple[str, ...], BeforeValidator(_freeze_str_seq)]
     cwd: str
     timeout_seconds: int
     max_output_bytes: int
