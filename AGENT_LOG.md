@@ -59,4 +59,19 @@
 - **绿灯：** 同命令 2 passed；全量 `python -m pytest` **3 passed**（controller 复跑确认）。
 - **实现 commit：** `ba3e36cb2ba812c57bc3f9340b1171b2495eb3ba`
 
+---
+
+## 2026-08-14 · T03 动作 schema
+
+- **Task：** T03（WT-A / `feat/a-foundation`）。未执行 T04。
+- **Implementer：** `286a8228-02b3-4f49-b29d-2e5d348ea596`
+- **Fixer：** `1a202982-cc89-4360-ac2b-ac7ba2623fb0`（质量 Important：`strict=True`；oversized 改为合法超长 JSON）
+- **Spec reviewer：** `d65c8642-c353-4da6-945e-fa339f2022ed` → Spec compliant，Approved。
+- **Quality reviewer：** 初审 `8c18f56e-42d6-47f0-a81b-bc93040d1066` Needs fixes（Important×2）；复审 `1eb30006-a980-4bdd-9ab1-d0f1ccd05e00` Approved。Minor：未 frozen、RecursionError、错误信息粗。
+- **Human edits：** none
+- **红灯：** 仅测试时 `pytest tests/test_actions.py -v` → `ModuleNotFoundError: No module named 'guardedcoder.errors'`。
+- **绿灯：** 初版 4 passed / 全量 7 passed；修复后 `test_actions` 5 passed，全量 **8 passed**。
+- **实现 commit：** `f33e675658b20450502c287e7310d224049a933f`；收紧 `92a671f0c9afed19fe714a708fcf24e3af6d27fb`
+
+
 
