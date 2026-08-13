@@ -69,7 +69,7 @@ Human edits: <none|简述>
 | T13 | 硬规则与 profile 分码 | done | dcb5be736912c184fd41aa9af2c18036b31526ad | WT-D / PR-D |
 | T14 | 风险分类 | done | 2423edd5ba9a930966057afe82ec57aa6ada6eb1 | WT-D / PR-D |
 | T15 | 治理求交评估 | done | 78b8beef5c7a9d044a7076d4c60905d3a8895090 | WT-D / PR-D |
-| T16 | SQLite、Task、AuditEvent 脱敏 | done | TBD | WT-E / PR-E |
+| T16 | SQLite、Task、AuditEvent 脱敏 | done | 3006440dc5989058a3609aeb08aaf101553e134c | WT-E / PR-E |
 | T17 | M8 创建并消费 permit | pending | — | WT-E / PR-E |
 | T18 | apply_patch 窗口恢复 | pending | — | WT-E / PR-E |
 | T19 | run_command 窗口 fail-closed | pending | — | WT-E / PR-E |
