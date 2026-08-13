@@ -43,21 +43,29 @@ def read_file(
 
     try:
         with file_path.open("rb") as stream:
-            data = stream.read(MAX_BYTES + 1)
+            for _ in range(start_line - 1):
+                skipped = stream.readline()
+                if not skipped:
+                    break
+                if b"\x00" in skipped:
+                    raise FileToolError("file is binary or not valid UTF-8")
+            collected = bytearray()
+            truncated = False
+            current = start_line
+            while end_line is None or current <= end_line:
+                line = stream.readline()
+                if not line:
+                    break
+                if b"\x00" in line:
+                    raise FileToolError("file is binary or not valid UTF-8")
+                if len(collected) + len(line) > MAX_BYTES:
+                    collected.extend(line[: MAX_BYTES - len(collected)])
+                    truncated = True
+                    break
+                collected.extend(line)
+                current += 1
     except OSError:
         raise FileToolError("file cannot be read") from None
 
-    if b"\x00" in data:
-        raise FileToolError("file is binary or not valid UTF-8")
-
-    truncated = len(data) > MAX_BYTES
-    try:
-        text = _decode_text_prefix(data[:MAX_BYTES], truncated)
-    except FileToolError:
-        raise
-
-    if start_line > 1 or end_line is not None:
-        lines = text.splitlines(keepends=True)
-        selected = lines[start_line - 1 : end_line]
-        text = "".join(selected)
+    text = _decode_text_prefix(bytes(collected), truncated)
     return Observation(body=text, truncated=truncated)

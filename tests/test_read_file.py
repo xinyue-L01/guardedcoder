@@ -82,6 +82,16 @@ def test_observation_redacts_key_shaped_body() -> None:
     assert fake_key not in result.body
 
 
+def test_read_file_line_range_reads_past_initial_byte_window(tmp_path: Path) -> None:
+    prefix = ("x" * 80 + "\n") * 900
+    (tmp_path / "deep.txt").write_bytes((prefix + "wanted\n").encode())
+
+    result = read_file(tmp_path, "deep.txt", start_line=901, end_line=901)
+
+    assert result.body.splitlines() == ["wanted"]
+    assert result.truncated is False
+
+
 def test_read_file_line_range_reads_selected_lines(tmp_path: Path) -> None:
     (tmp_path / "lines.txt").write_text("one\ntwo\nthree\nfour\n", encoding="utf-8")
 

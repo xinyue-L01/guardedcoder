@@ -73,6 +73,18 @@ def test_search_text_skips_env_files_without_leaking(tmp_path: Path) -> None:
     assert ".env" not in result.body
 
 
+def test_search_text_walks_ancestors_of_nested_read_paths(tmp_path: Path) -> None:
+    nested = tmp_path / "src" / "nested"
+    nested.mkdir(parents=True)
+    (nested / "hit.py").write_text("needle deep\n", encoding="utf-8")
+    (tmp_path / "src" / "skip.py").write_text("needle skip\n", encoding="utf-8")
+
+    result = search_text(tmp_path, "needle", read_paths=("src/nested",))
+
+    assert result.body == "src/nested/hit.py:1:needle deep"
+    assert "skip.py" not in result.body
+
+
 def test_search_text_respects_read_paths(tmp_path: Path) -> None:
     src = tmp_path / "src"
     src.mkdir()

@@ -26,6 +26,23 @@ def _under_read_paths(root: Path, read_paths: tuple[str, ...], relative: str) ->
     return False
 
 
+def _dir_may_reach_read_paths(
+    root: Path, read_paths: tuple[str, ...], relative: str
+) -> bool:
+    resolved = resolve_under_worktree(root, relative)
+    for allowed_path in read_paths:
+        allowed = resolve_under_worktree(root, allowed_path)
+        if not is_inside_worktree(root, allowed):
+            continue
+        if (
+            resolved == allowed
+            or resolved.is_relative_to(allowed)
+            or allowed.is_relative_to(resolved)
+        ):
+            return True
+    return False
+
+
 def _allowed_files(
     root: Path, read_paths: tuple[str, ...] | None
 ) -> Iterator[tuple[Path, str]]:
@@ -38,7 +55,9 @@ def _allowed_files(
             relative = (current / name).relative_to(root).as_posix()
             if check_path(root, relative) != FenceCode.ok:
                 continue
-            if read_paths is not None and not _under_read_paths(root, read_paths, relative):
+            if read_paths is not None and not _dir_may_reach_read_paths(
+                root, read_paths, relative
+            ):
                 continue
             allowed_directories.append(name)
         directory_names[:] = allowed_directories
