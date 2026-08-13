@@ -58,6 +58,15 @@ def test_remote_http_with_key_refuses_without_sending_request() -> None:
     assert seen == []
 
 
+def test_remote_http_uppercase_scheme_with_key_refuses_without_sending_request() -> None:
+    seen: list[httpx.Request] = []
+    client = _recording_client(seen)
+    llm = _llm("HTTP://remote.example/v1", client)
+    with pytest.raises(RemoteKeyHttpError):
+        llm.complete([{"role": "user", "content": "hi"}])
+    assert seen == []
+
+
 def test_loopback_ipv4_http_with_key_completes() -> None:
     seen: list[httpx.Request] = []
     client = _recording_client(seen)

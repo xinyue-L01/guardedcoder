@@ -46,4 +46,4 @@ class OpenAICompatibleLLM(LLMPort):
 
     def _is_remote_http(self) -> bool:
         parsed = urlparse(self._base_url)
-        return parsed.scheme == "http" and parsed.hostname not in _LOOPBACK_HOSTS
+        return parsed.scheme.lower() == "http" and parsed.hostname not in _LOOPBACK_HOSTS
