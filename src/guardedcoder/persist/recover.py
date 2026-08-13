@@ -1,26 +1,37 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 from pathlib import Path
 from typing import Any
 
 from guardedcoder.errors import StaleRevisionError
-from guardedcoder.persist.store import update_task
+from guardedcoder.governance.fence import FenceCode, check_path
+from guardedcoder.persist.txn import write_txn
 
 
-def _read_workspace_file(workspace: Path, rel: str) -> str | None:
+def _file_mark(workspace: Path, rel: str) -> dict[str, object] | None:
+    if check_path(workspace, rel) != FenceCode.ok:
+        return None
     path = workspace / rel
+    if path.is_symlink():
+        return None
+    if not path.exists():
+        return {"exists": False, "sha256": None}
     if not path.is_file():
         return None
-    return path.read_text(encoding="utf-8")
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    return {"exists": True, "sha256": digest}
 
 
-def _matches_image(workspace: Path, image: dict[str, str] | None) -> bool:
+def _matches_image(workspace: Path, image: dict | None) -> bool | None:
     if not image:
         return False
     for rel, expected in image.items():
-        actual = _read_workspace_file(workspace, rel)
+        actual = _file_mark(workspace, rel)
+        if actual is None:
+            return None
         if actual != expected:
             return False
     return True
@@ -43,8 +54,18 @@ def recover(
     ).fetchone()
     if win is None:
         raise LookupError(f"no open execution window for task {task_id}")
+    task = conn.execute(
+        "SELECT repo_path, state_revision FROM tasks WHERE task_id = ?",
+        (task_id,),
+    ).fetchone()
+    if task is None:
+        raise LookupError(f"task {task_id} not found")
+    owned = Path(task["repo_path"]).resolve()
     kind = win["action_kind"]
-    if kind == "run_command":
+    if workspace.resolve() != owned:
+        new_status = "error"
+        new_run_state = "error"
+    elif kind == "run_command":
         new_status = "error"
         new_run_state = "error"
     elif kind != "apply_patch":
@@ -56,7 +77,10 @@ def recover(
         postimage = json.loads(win["postimage_json"]) if win["postimage_json"] else None
         match_post = _matches_image(workspace, postimage)
         match_pre = _matches_image(workspace, preimage)
-        if match_post:
+        if match_post is None or match_pre is None:
+            new_status = "error"
+            new_run_state = "error"
+        elif match_post:
             new_status = "succeeded"
             new_run_state = "running"
         elif match_pre:
@@ -65,21 +89,17 @@ def recover(
             new_status = "error"
             new_run_state = "error"
 
-    conn.execute("SAVEPOINT sp_recover")
-    try:
-        update_task(
-            conn,
-            task_id,
-            expected_revision=expected_revision,
-            run_state=new_run_state,
+    with write_txn(conn):
+        cur = conn.execute(
+            "UPDATE tasks SET run_state = ?, state_revision = state_revision + 1 "
+            "WHERE task_id = ? AND state_revision = ?",
+            (new_run_state, task_id, expected_revision),
         )
+        if cur.rowcount == 0:
+            raise StaleRevisionError(
+                f"stale revision for task {task_id}: expected {expected_revision}"
+            )
         conn.execute(
             "UPDATE execution_windows SET status = ? WHERE window_id = ?",
             (new_status, win["window_id"]),
         )
-        conn.execute("RELEASE SAVEPOINT sp_recover")
-        conn.commit()
-    except Exception:
-        conn.execute("ROLLBACK TO SAVEPOINT sp_recover")
-        conn.execute("RELEASE SAVEPOINT sp_recover")
-        raise
