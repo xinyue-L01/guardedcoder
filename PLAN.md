@@ -54,7 +54,7 @@ Human edits: <none|简述>
 |---|---|---|---|---|
 | G0 | 冷启动（仓库外试做 T01+T02） | passed | — | G0 已签署；disposable 未进正式仓 |
 | G1 | Git / GitHub / AGENT_LOG 基线 | done | 53075f05fc5097655d7f5b2f1113b2fbc884da4c | 正式仓 main；无 origin |
-| T01 | 工程骨架 + pip-tools | done | 0421cc9463e304c1dadfd293aaab253108f8a4d5 | WT-A `.worktrees/wt-a-foundation` / PR-A |
+| T01 | 工程骨架 + pip-tools | done | 0421cc9463e304c1dadfd293aaab253108f8a4d5 | WT-A `.worktrees/wt-a-foundation`；已推送；Draft PR 未创建（gh 未安装） |
 | T02 | 状态枚举 | pending | — | WT-A / PR-A |
 | T03 | 动作 schema | pending | — | WT-A / PR-A |
 | T04 | 信封模型 | pending | — | WT-A / PR-A |

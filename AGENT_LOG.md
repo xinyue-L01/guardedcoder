@@ -34,4 +34,5 @@
 - **回归：** commit 前再次 `python -m pytest tests/test_pkg_import.py -v` → **1 passed**。
 - **锁文件：** `python -m piptools compile --generate-hashes --allow-unsafe --index-url https://pypi.org/simple` 分别编译 `requirements.in` / `requirements-dev.in`；lock 仅含 `https://pypi.org/simple`，含 sha256 hash，非 `pip freeze`。
 - **实现 commit：** `0421cc9463e304c1dadfd293aaab253108f8a4d5`（`feat: add setuptools project skeleton`）。
+- **推送：** `feat/a-foundation` → `origin/feat/a-foundation`。本机无 `gh`，**未创建** Draft PR-A（不虚构）。GitHub 手工开 PR：https://github.com/xinyue-L01/guardedcoder/pull/new/feat/a-foundation
 
