@@ -281,14 +281,16 @@
 - **Human edits：** none
 - **红灯：** 缺 `persist.permit` / `PermitConsumedError`
 - **绿灯：** `test_permit` 8 passed；全量 **127 passed, 1 skipped**
+- **实现 commit：** `3eaed9d70322e1f8930eee7fc303f61915573d72`
+
+---
+
+## 2026-08-14 · T18 apply_patch 窗口恢复（WT-E）
+
+- **Task：** T18（WT-E / `feat/e-persist`）。未执行 T19。未合并 PR-E。
+- **Implementer：** `5bdf7d88-ec5b-40f8-b514-682f0475a18a`
+- **Spec+quality reviewer：** `73e7ae20-84fe-47ea-8b73-1eeaadc157f4` → C/I=0
+- **Human edits：** none
+- **红灯：** 缺 `persist.recover`
+- **绿灯：** `test_recover_patch` 7；全量 **134 passed, 1 skipped**
 - **实现 commit：** TBD
-
-
-
-
-
-
-
-
-
-
