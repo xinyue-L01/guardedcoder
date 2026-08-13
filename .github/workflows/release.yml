@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install hashed lock
+        run: python -m pip install --require-hashes -r requirements-dev.txt
+
+      - name: Build wheel
+        run: python -m build --wheel
+
+      - name: Write SHA-256 checksums
+        run: |
+          python -c "import hashlib, pathlib; dist = pathlib.Path('dist');
+          [
+              (dist / (path.name + '.sha256')).write_text(
+                  hashlib.sha256(path.read_bytes()).hexdigest() + '  ' + path.name + '\n',
+                  encoding='utf-8',
+              )
+              for path in sorted(dist.glob('*.whl'))
+          ]"
+
+      - name: Upload GitHub Release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.whl
+            dist/*.sha256
+          fail_on_unmatched_files: true
