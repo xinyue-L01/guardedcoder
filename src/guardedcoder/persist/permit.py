@@ -86,8 +86,8 @@ def create_permit(
             )
         if pending_action_id is not None:
             pending = conn.execute(
-                "SELECT task_id, consumed, fingerprint FROM pending_actions "
-                "WHERE pending_action_id = ?",
+                "SELECT task_id, consumed, fingerprint, state_revision "
+                "FROM pending_actions WHERE pending_action_id = ?",
                 (pending_action_id,),
             ).fetchone()
             if (
@@ -95,6 +95,7 @@ def create_permit(
                 or pending[0] != task_id
                 or not pending[1]
                 or pending[2] != fingerprint
+                or pending[3] != expected_revision
             ):
                 raise PermitInvalidError(
                     f"pending_action_id {pending_action_id} does not match "

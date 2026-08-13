@@ -61,54 +61,55 @@ def recover(
     executor: Any = None,
 ) -> None:
     del executor
+    workspace = workspace.resolve()
     conn.row_factory = sqlite3.Row
-    win = conn.execute(
-        "SELECT * FROM execution_windows WHERE task_id = ? "
-        "AND status = ? ORDER BY rowid DESC",
-        (task_id, "executing_action"),
-    ).fetchone()
-    if win is None:
-        raise LookupError(f"no open execution window for task {task_id}")
-    task = conn.execute(
-        "SELECT worktree_identity, state_revision FROM tasks WHERE task_id = ?",
-        (task_id,),
-    ).fetchone()
-    if task is None:
-        raise LookupError(f"task {task_id} not found")
-    owned = Path(task["worktree_identity"]).resolve()
-    kind = win["action_kind"]
-    if workspace.resolve() != owned:
-        new_status = "error"
-        new_run_state = "error"
-    elif kind == "run_command":
-        new_status = "error"
-        new_run_state = "error"
-    elif kind != "apply_patch":
-        raise NotImplementedError(
-            f"recovery for action_kind {kind!r} is not implemented"
-        )
-    else:
-        preimage = json.loads(win["preimage_json"]) if win["preimage_json"] else None
-        postimage = json.loads(win["postimage_json"]) if win["postimage_json"] else None
-        match_post = _matches_image(workspace, postimage)
-        match_pre = _matches_image(workspace, preimage)
-        if match_post is None or match_pre is None:
-            new_status = "error"
-            new_run_state = "error"
-        elif match_post:
-            new_status = "succeeded"
-            new_run_state = "running"
-        elif match_pre:
-            if task["state_revision"] != expected_revision:
-                raise StaleRevisionError(
-                    f"stale revision for task {task_id}: expected {expected_revision}"
-                )
-            return
-        else:
-            new_status = "error"
-            new_run_state = "error"
-
     with write_txn(conn):
+        win = conn.execute(
+            "SELECT * FROM execution_windows WHERE task_id = ? "
+            "AND status = ? ORDER BY rowid DESC",
+            (task_id, "executing_action"),
+        ).fetchone()
+        if win is None:
+            raise LookupError(f"no open execution window for task {task_id}")
+        task = conn.execute(
+            "SELECT worktree_identity, state_revision FROM tasks WHERE task_id = ?",
+            (task_id,),
+        ).fetchone()
+        if task is None:
+            raise LookupError(f"task {task_id} not found")
+        owned = Path(task["worktree_identity"]).resolve()
+        kind = win["action_kind"]
+        if workspace != owned or not workspace.is_dir():
+            new_status = "error"
+            new_run_state = "error"
+        elif kind == "run_command":
+            new_status = "error"
+            new_run_state = "error"
+        elif kind != "apply_patch":
+            raise NotImplementedError(
+                f"recovery for action_kind {kind!r} is not implemented"
+            )
+        else:
+            preimage = json.loads(win["preimage_json"]) if win["preimage_json"] else None
+            postimage = json.loads(win["postimage_json"]) if win["postimage_json"] else None
+            match_post = _matches_image(workspace, postimage)
+            match_pre = _matches_image(workspace, preimage)
+            if match_post is None or match_pre is None:
+                new_status = "error"
+                new_run_state = "error"
+            elif match_post:
+                new_status = "succeeded"
+                new_run_state = "running"
+            elif match_pre:
+                if task["state_revision"] != expected_revision:
+                    raise StaleRevisionError(
+                        f"stale revision for task {task_id}: expected {expected_revision}"
+                    )
+                return
+            else:
+                new_status = "error"
+                new_run_state = "error"
+
         cur = conn.execute(
             "UPDATE tasks SET run_state = ?, state_revision = state_revision + 1 "
             "WHERE task_id = ? AND state_revision = ?",

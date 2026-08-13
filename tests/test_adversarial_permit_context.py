@@ -8,7 +8,7 @@ from guardedcoder.errors import PermitInvalidError
 from guardedcoder.persist.approval import approve, insert_pending
 from guardedcoder.persist.db import connect
 from guardedcoder.persist.permit import consume_permit_and_open_window, create_permit
-from guardedcoder.persist.store import create_task
+from guardedcoder.persist.store import create_task, update_task
 
 
 def _task(conn: sqlite3.Connection, task_id: str = "t1") -> sqlite3.Row:
@@ -146,6 +146,40 @@ def test_approval_permit_must_match_consumed_pending(tmp_path) -> None:
             envelope_hash="env-1",
             expected_revision=2,
             pending_action_id="missing-pending",
+        )
+
+
+def test_consumed_pending_cannot_issue_permit_after_revision_bump(tmp_path) -> None:
+    conn = connect(tmp_path / "g.db")
+    create_task(
+        conn,
+        task_id="t1",
+        run_state="awaiting_approval",
+        artifact_state="worktree_present",
+        repo_path="/repo",
+        base_commit="abc",
+        worktree_identity="wt-1",
+        envelope_hash="env-1",
+        remaining_steps=10,
+    )
+    pending_id = insert_pending(
+        conn,
+        task_id="t1",
+        fingerprint="fp-1",
+        normalized_action_json="{}",
+        state_revision=1,
+    )
+    approve(conn, "t1", "fp-1")
+    update_task(conn, "t1", 1, envelope_hash="env-2")
+    with pytest.raises(PermitInvalidError):
+        create_permit(
+            conn,
+            task_id="t1",
+            action_id="a1",
+            fingerprint="fp-1",
+            envelope_hash="env-2",
+            expected_revision=2,
+            pending_action_id=pending_id,
         )
 
 
