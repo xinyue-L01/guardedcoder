@@ -30,7 +30,7 @@ class WorktreeOwnership:
     worktree_path: Path
 
 
-def _validate_task_id(task_id: str) -> None:
+def validate_task_id(task_id: str) -> None:
     if not isinstance(task_id, str) or _TASK_ID.fullmatch(task_id) is None:
         raise ValueError("task_id must contain only letters, digits, '.', '_' or '-'")
     if task_id in {".", ".."}:
@@ -52,12 +52,12 @@ def _harness_root(harness_dir: str | Path) -> Path:
 def ownership_record_path(
     task_id: str, *, harness_dir: str | Path
 ) -> Path:
-    _validate_task_id(task_id)
+    validate_task_id(task_id)
     return _harness_root(harness_dir) / "ownership" / f"{task_id}.json"
 
 
 def _expected_worktree_path(task_id: str, harness_dir: str | Path) -> Path:
-    _validate_task_id(task_id)
+    validate_task_id(task_id)
     return _absolute(_harness_root(harness_dir) / "worktrees" / task_id)
 
 
@@ -135,7 +135,7 @@ def create_task_worktree(
     harness_dir: str | Path,
 ) -> WorktreeOwnership:
     """Create a detached task worktree and persist its trusted ownership."""
-    _validate_task_id(task_id)
+    validate_task_id(task_id)
     if not isinstance(base_commit, str) or _COMMIT_ID.fullmatch(base_commit) is None:
         raise ValueError("base_commit must be a fixed hexadecimal commit id")
 
