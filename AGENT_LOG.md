@@ -415,4 +415,17 @@
 - **绿灯：** `tests/test_apply_back.py` **14 passed**；全量 **215 passed, 2 skipped**。
 - **实现 commit：** `83d97079dea01938072d68e4cb76d283a059dcd1`
 
+---
+
+## 2026-08-14 · PR-I branch follow-up（diff 路径解析）
+
+- **性质：** branch-level Critical/Important。不改 T33 已完成状态（T33 实现 commit 仍为 `83d97079dea01938072d68e4cb76d283a059dcd1`）。
+- **Implementer：** lane-i-owner
+- **Spec reviewer：** 初审 `ac2082b9-7879-4a40-91ba-6fae9b9729b8` I=1；`51ffef5e-ca5d-4530-85b9-a885929ad10d` I=1（C-octal）；复审 `2bd67a16-98a6-4b2b-bb5e-1f9dac9a968a` → Spec ✅ C/I=0。
+- **Quality reviewer：** 初审 `dcc2f948-e8d6-4d7b-aa6b-5086ea93040b` C=1；`62f8adba-4d6c-493f-9b7c-d5fcae087e10` C=1；复审 `fa56c0df-0526-4a9c-aefa-a6cf65318856` → Approved C/I=0。
+- **Human edits：** none
+- **红灯：** `my file.txt` 被拆成 `file.txt`；`"a/\344\270\255..."` 被解成 `344270255....txt`，全 pre recover 误标 applied。
+- **绿灯：** `tests/test_apply_back.py` **16 passed**；全量 **217 passed, 2 skipped**。
+- **Follow-up commit：** `ec33655b6b38eaf33da7c30e2251cad5ad049e7a`
+
 
