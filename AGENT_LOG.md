@@ -331,5 +331,31 @@
 - **绿灯：** 全量 **143 passed, 1 skipped**
 - **Follow-up commit：** `06486647a15c715fbc403937dfa06cd6db0ab054`
 
+---
+
+## 2026-08-14 · PR-E 独立对抗审查（Codex 反例）
+
+- **性质：** 不合并、不执行 T21。systematic-debugging：先写失败测试并记录红灯，再最小修复。
+- **红灯（修复前）：** `tests/test_adversarial_*.py` **16 failed, 1 passed, 1 skipped**（见 `.superpowers/sdd/adversarial-red.txt`，未入库）。
+  1. stale permit：envelope 不变但 revision 变后仍能 consume（DID NOT RAISE）
+  2. 双窗口：executing_action 下仍能 create 第二 permit
+  3. 跨进程：create_task/insert_pending/approve 关闭重连后行为丢失
+  4. 双连接 approve：成功数 0（无 commit）；revision 变更因无持久化误报 StaleRevision
+  5. 恢复 `../` 逃逸：run_state 被标成 running
+  6. 全文入库：hash 标记恢复被当成 error
+  7. pending_action_id / verifying：TypeError 或 run_state 被改成 executing_action
+- **修复 commits：**
+  - `97ee8b7` 事务所有权 + 原子审批
+  - `97223ab` stale permit / 单窗口 / pending 绑定 / verifying
+  - `a09f0a8` SHA-256 镜像 + 围栏
+  - `38a38a2` HITL 指纹与 worktree_identity 恢复
+  - `92c5717` 已消费 pending 不得跨 revision 发 permit；recover 单事务
+  - `357d9a1` preimage 重试认领 revision；流式哈希
+- **Spec reviewer：** `41fc13cf` 初审 C3/I1；复审 `59098adb` → **C/I=0**
+- **并发/恢复 quality reviewer（独立，未与 spec 合并）：** `8b1b7a83` → `8db0d042` → `6c36180f` → `56969f88`。终态 **C=0**。剩余 I=2（新 revision 再次 recover 认领；pre/post 路径集合不必相同）由 controller 按签字语义驳回：同一次崩溃恢复必须能在认领后继续；创建/删除文件要求路径集合不同。
+- **Human edits：** none
+- **绿灯：** 全量 **164 passed, 2 skipped**
+
+
 
 
