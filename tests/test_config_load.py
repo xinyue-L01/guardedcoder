@@ -95,6 +95,13 @@ def test_type_error_raises_config_error(tmp_path: Path) -> None:
         load_app_config(path)
 
 
+def test_non_utf8_toml_raises_config_error(tmp_path: Path) -> None:
+    path = tmp_path / "config.toml"
+    path.write_bytes(b"\xff\xfe invalid utf-8")
+    with pytest.raises(ConfigError):
+        load_app_config(path)
+
+
 def test_legal_toml_loaded_twice_equal(tmp_path: Path) -> None:
     path = _write_toml(tmp_path, _LEGAL_TOML)
     first = load_app_config(path)

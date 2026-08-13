@@ -20,7 +20,7 @@ def load_app_config(path: Path) -> AppConfig:
             data = tomllib.load(handle)
     except OSError as exc:
         raise ConfigError(f"cannot read config {path}") from exc
-    except tomllib.TOMLDecodeError as exc:
+    except (tomllib.TOMLDecodeError, UnicodeDecodeError) as exc:
         raise ConfigError(f"invalid TOML in {path}") from exc
     _reject_forbidden(data)
     try:
