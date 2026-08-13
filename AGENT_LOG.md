@@ -390,5 +390,20 @@
 - **实现 commit：** `ed0c8472335ba953cba7713731a5295d214c394d`（含 `test_config_load.py` PEM 头拼接卫生）。
 - **Minors（不修）：** stripe/gitlab/ASIA/github_pat/非通用 PEM 头无专测；`.cache`/`htmlcov` 未参数化；symlink 与 walk onerror 无测。
 
+---
+
+## 2026-08-14 · T41 CI（WT-M）
+
+- **Task：** T41（WT-M / `feat/m-release`）。未执行 T42/T43。未合并 PR-M。
+- **Implementer：** Lane M owner `lane-m-owner`
+- **Spec reviewer：** 初审 `dfe2102b-9144-4546-a35f-27436dd4eaf4` → Spec ✅；复审 `8433b255-56bc-4fc6-ae75-8c556380278c` → Spec ✅。C/I=0。
+- **Quality reviewer：** 初审 `5ac9d85c-b485-41ad-adcc-2f7ca2a68766` Needs fixes（I=2：SHA-256 子串过弱、`unit-test:`/`combined` 假绿）；复审 `24ca1d23-b361-4aa1-9b10-01f89a0bee3c` → Approved。C/I=0。
+- **Human edits：** none
+- **红灯：** 仅有 `tests/test_ci_files.py` 时 4 failed，缺 `.github/workflows/ci.yml` / `release.yml` / `.gitlab-ci.yml`（`.superpowers/sdd/t41-red.txt`）。
+- **绿灯：** targeted 4 passed；本地 `python scripts/secret_scan.py .` → clean 78 files；本地 `python -m build --wheel` → `guardedcoder-0.1.0-py3-none-any.whl`。
+- **实现 commit：** `e757a9d47700dc9928c79e77b2e217106f7cdefc`
+- **Minors（不修）：** Actions/镜像未钉 commit digest；SHA-256 仍是 token 子串；CI 测试未强制断言 `push:`。
+- **未声称** 远程 CI 已 pass。未创建真实 tag/Release。
+
 
 
