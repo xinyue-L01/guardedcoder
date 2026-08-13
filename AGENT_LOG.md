@@ -204,6 +204,21 @@
 - **绿灯：** 修复后 `test_fence` 8 passed / 1 skipped；全量 **64 passed, 1 skipped**。
 - **实现 commit：** `a262669dac93b01846aba41e0083415ebc60572f`；收紧 `6ce301aac696ba0d1cdcef9f6320682958c520d9`
 
+---
+
+## 2026-08-14 · T13 硬规则与 profile 分码（WT-D）
+
+- **Task：** T13（WT-D / `feat/d-governance`）。未执行 T14。
+- **Implementer：** `63b18d80-0640-4cac-a9aa-c88db25d11b1`
+- **Fixer：** `c8c81f29-7dd4-4809-ae4e-1b432f3a224f`（argv token 不用宿主 Path）
+- **Spec reviewer：** `5b8f41e4-994a-4e0e-800d-4adf3fed863a` → Spec ✅。Minor：su/runas/pkexec 无专测。
+- **Quality reviewer：** 初审 `8a2582c1-ad30-4b5f-a4fc-201cb0386043` Needs fixes；复审 `e343d2df-eec4-4421-9234-b664d8788d4d` Approved。C/I=0。
+- **Human edits：** none
+- **红灯：** `ImportError: cannot import name 'ProfileKind'`
+- **绿灯：** 修复后全量 **88 passed, 1 skipped**。
+- **实现 commit：** `81529a15a5880fdcd952abcc42479ba213515019`；规范化 `dcb5be736912c184fd41aa9af2c18036b31526ad`
+
+
 
 
 
