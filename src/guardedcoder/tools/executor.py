@@ -126,6 +126,8 @@ def _authorize(
         ):
             raise UnauthorizedError("claim is missing, stale, or replayed")
     if isinstance(action, ApplyPatchAction) and not started:
+        if claim_id is not None:
+            raise UnauthorizedError("first apply_patch must not carry a claim")
         cur = conn.execute(
             "UPDATE execution_windows SET execution_started = 1 "
             "WHERE window_id = ? AND execution_started = 0",

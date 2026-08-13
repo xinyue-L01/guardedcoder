@@ -429,8 +429,9 @@
 - **硬门槛测试 1–8：** 双连接仅一 claim；双 recover 不得双执行；无 claim 零写盘；错/旧 claim 拒绝；claim 一次性；混合 pre/post error；run_command recover 不重跑；正常 permit 路径无需 claim。均已通过。
 - **Human edits：** none
 - **红灯：** 缺 `executor` / `claim` / `UnauthorizedError`
-- **绿灯：** `test_executor` 初版 10 passed；全量 **247 passed, 4 skipped**
+- **绿灯：** `test_executor` 初版 10 passed；I1 修复后 19 passed / 1 skipped；全量 **249 passed, 4 skipped**
 - **实现 commit：** `7afede0369ac0326931d07cee16139161718f110`
+- **复审：** Quality `0b525676` C=0 I=0；Spec `8cb88b05` C=0 I=1（未启动窗带无效 `claim_id` 先写盘）已修：首次 apply 若带 `claim_id` 在写盘前拒绝。
 - **推送：** `feat/f-tools`（不合并、不执行 T25）
 
 

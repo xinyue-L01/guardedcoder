@@ -376,6 +376,25 @@ def test_8_normal_permit_path_needs_no_claim(tmp_path: Path) -> None:
     assert (ws / "a.txt").read_bytes() == b"after\n"
 
 
+def test_first_apply_rejects_claim_id_without_writing(tmp_path: Path) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    conn = connect(tmp_path / "g.db")
+    _create(conn, ws)
+    permit_id, window_id = _open_patch(conn, ws)
+    with pytest.raises(UnauthorizedError):
+        execute(
+            conn,
+            task_id="t1",
+            permit_id=permit_id,
+            window_id=window_id,
+            action=ApplyPatchAction(action="apply_patch", diff=_diff("before", "after")),
+            worktree=ws,
+            claim_id="not-the-claim",
+        )
+    assert (ws / "a.txt").read_bytes() == b"before\n"
+
+
 def test_bare_action_and_unconsumed_permit_rejected(tmp_path: Path) -> None:
     ws = tmp_path / "ws"
     ws.mkdir()
