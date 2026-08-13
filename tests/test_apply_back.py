@@ -380,3 +380,68 @@ def test_enter_applying_on_legacy_not_null_permit_schema(tmp_path: Path) -> None
     ).fetchone()
     assert row is not None
     assert row[1] == "applying"
+
+
+def test_recover_preimage_with_spaced_path_is_not_applied(tmp_path: Path) -> None:
+    conn, origin, _artifact, worktree = _setup(tmp_path)
+    (worktree / "my file.txt").write_text("hello\n", encoding="utf-8")
+    task = type(
+        "Task",
+        (),
+        {
+            "task_id": "task-33",
+            "worktree_identity": str(worktree),
+            "base_commit": _git(origin, "rev-parse", "HEAD"),
+            "max_patch_bytes": 1_000_000,
+        },
+    )()
+    artifact = GitPatchArtifactPort(artifact_dir=tmp_path / "artifacts2").export(task)
+    preview = preview_apply(
+        conn, task_id="task-33", expected_revision=1, artifact=artifact
+    )
+    assert "my file.txt" in preview.preimage
+    assert "my file.txt" in preview.postimage
+    assert preview.preimage["my file.txt"]["exists"] is False
+    assert preview.postimage["my file.txt"]["exists"] is True
+    enter_applying(conn, preview)
+
+    decision = recover_apply(
+        conn, task_id="task-33", expected_revision=2, origin=origin
+    )
+
+    assert decision == "needs_reconfirm"
+    assert _task_row(conn)["artifact_state"] == "patch_ready"
+    assert not (origin / "my file.txt").exists()
+
+
+def test_recover_preimage_with_non_ascii_path_is_not_applied(tmp_path: Path) -> None:
+    conn, origin, _artifact, worktree = _setup(tmp_path)
+    name = "中文.txt"
+    (worktree / name).write_text("你好\n", encoding="utf-8")
+    task = type(
+        "Task",
+        (),
+        {
+            "task_id": "task-33",
+            "worktree_identity": str(worktree),
+            "base_commit": _git(origin, "rev-parse", "HEAD"),
+            "max_patch_bytes": 1_000_000,
+        },
+    )()
+    artifact = GitPatchArtifactPort(artifact_dir=tmp_path / "artifacts3").export(task)
+    preview = preview_apply(
+        conn, task_id="task-33", expected_revision=1, artifact=artifact
+    )
+    assert name in preview.preimage
+    assert name in preview.postimage
+    assert preview.preimage[name]["exists"] is False
+    assert preview.postimage[name]["exists"] is True
+    enter_applying(conn, preview)
+
+    decision = recover_apply(
+        conn, task_id="task-33", expected_revision=2, origin=origin
+    )
+
+    assert decision == "needs_reconfirm"
+    assert _task_row(conn)["artifact_state"] == "patch_ready"
+    assert not (origin / name).exists()

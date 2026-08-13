@@ -276,24 +276,91 @@ def _git_apply(origin: Path, patch: Path, *, check: bool) -> None:
     git_text(origin, *args)
 
 
+def _next_quoted_git_path(text: str) -> tuple[str, str] | None:
+    text = text.lstrip()
+    if not text.startswith('"'):
+        return None
+    raw = bytearray()
+    index = 1
+    while index < len(text):
+        char = text[index]
+        if char == '"':
+            return raw.decode("utf-8"), text[index + 1 :]
+        if char != "\\":
+            raw.extend(char.encode("utf-8"))
+            index += 1
+            continue
+        if index + 1 >= len(text):
+            return None
+        nxt = text[index + 1]
+        if nxt in "01234567":
+            digits = nxt
+            index += 2
+            while index < len(text) and len(digits) < 3 and text[index] in "01234567":
+                digits += text[index]
+                index += 1
+            raw.append(int(digits, 8))
+            continue
+        mapping = {"n": b"\n", "t": b"\t", "r": b"\r", '"': b'"', "\\": b"\\"}
+        raw.extend(mapping.get(nxt, nxt.encode("utf-8")))
+        index += 2
+    return None
+
+
+def _parse_diff_git_paths(rest: str) -> tuple[str, str] | None:
+    rest = rest.strip()
+    if rest.startswith('"'):
+        first = _next_quoted_git_path(rest)
+        if first is None:
+            return None
+        a_path, rest = first
+        second = _next_quoted_git_path(rest)
+        if second is None:
+            return None
+        return a_path, second[0]
+    marker = " b/"
+    split_at = rest.find(marker)
+    if not rest.startswith("a/") or split_at == -1:
+        return None
+    return rest[:split_at], rest[split_at + 1 :]
+
+
+def _strip_ab_prefix(path: str) -> str | None:
+    text = path.strip()
+    if text.startswith('"') and text.endswith('"') and len(text) >= 2:
+        quoted = _next_quoted_git_path(text)
+        text = quoted[0] if quoted is not None else text[1:-1]
+    if text in {"/dev/null", "dev/null"}:
+        return None
+    if text.startswith("a/") or text.startswith("b/"):
+        text = text[2:]
+    text = text.replace("\\", "/").strip()
+    return text or None
+
+
 def _patch_paths(body: bytes) -> list[str]:
     paths: list[str] = []
     seen: set[str] = set()
-    for raw in body.splitlines():
-        if not raw.startswith(b"diff --git "):
-            continue
-        text = raw.decode("utf-8", errors="replace")
-        parts = text.split()
-        if len(parts) < 4:
-            continue
-        rel = parts[-1]
-        if rel.startswith("b/"):
-            rel = rel[2:]
-        rel = rel.replace("\\", "/").strip()
+
+    def add(rel: str | None) -> None:
         if not rel or rel in seen:
-            continue
+            return
         seen.add(rel)
         paths.append(rel)
+
+    for raw in body.splitlines():
+        if raw.startswith(b"diff --git "):
+            parsed = _parse_diff_git_paths(
+                raw.decode("utf-8", errors="replace")[len("diff --git ") :]
+            )
+            if parsed is None:
+                continue
+            add(_strip_ab_prefix(parsed[0]))
+            add(_strip_ab_prefix(parsed[1]))
+            continue
+        if raw.startswith(b"--- ") or raw.startswith(b"+++ "):
+            header = raw[4:].decode("utf-8", errors="replace").split("\t", 1)[0]
+            add(_strip_ab_prefix(header))
     if not paths:
         raise ApplyNotEligibleError("patch artifact contains no file paths")
     return paths

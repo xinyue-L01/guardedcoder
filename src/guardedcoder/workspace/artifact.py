@@ -75,6 +75,8 @@ def _complete_diff(worktree: Path, base_commit: str) -> bytes:
         return _git_env(
             env,
             worktree,
+            "-c",
+            "core.quotepath=false",
             "diff",
             "--cached",
             "--binary",
