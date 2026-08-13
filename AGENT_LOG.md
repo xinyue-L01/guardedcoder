@@ -244,6 +244,20 @@
 - **绿灯：** `test_evaluate` 9 passed；全量 **105 passed, 1 skipped**。
 - **实现 commit：** `78b8beef5c7a9d044a7076d4c60905d3a8895090`
 
+---
+
+## 2026-08-14 · PR-D follow-up（evaluate read_paths）
+
+- **性质：** PR-D 独立验收 Important。不执行 T16；**不改 T15 已完成状态**（T15 实现 commit 仍为 `78b8beef5c7a9d044a7076d4c60905d3a8895090`）。
+- **Implementer：** `42996148-4bd4-451d-a34a-9164c3ed7d17`
+- **Spec reviewer：** `25b9ed06-824d-4d42-9f51-6c50c9fae2c9` → Spec ✅
+- **Quality reviewer：** `40d0e45b-96c4-4310-aa3c-615d5f5f9e77` → Approved。C/I=0。Minor：NeedApproval 对 classify_read 不可达；两处测试未正断言 Deny。
+- **Human edits：** none
+- **红灯：** `test_read_file_under_write_paths_only_is_not_allow` → `assert Allow != Allow`（`src/a.py` 被 write_paths 误放行）。
+- **绿灯：** 全量 **111 passed, 1 skipped**。
+- **Follow-up commit：** `d10f324e91eb7b7dca70a7ae1f5e63d0f56ea61e`
+
+
 
 
 
