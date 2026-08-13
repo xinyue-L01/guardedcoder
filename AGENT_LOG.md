@@ -424,11 +424,12 @@
 - **Task：** T24。未执行 T25。未合并 PR-F。
 - **Implementer：** `8f380e59-0ee8-47a9-b0f6-2f489643fe08`
 - **Spec reviewer：** `f9e740e8` C=0 I=0。
-- **Quality reviewer：** `9b79b77a` C=1 I=2（不同 `attempt_id` 拆排他；claim 先于 apply 消费；读工具可复用 apply 窗）。对抗 `41cc8804` 同 C=1，另指出 `run_command` 未关窗会再跑。
+- **Quality reviewer：** `9b79b77a` C=1 I=2（不同 `attempt_id` 拆排他；claim 先于 apply 消费；读工具可复用 apply 窗）。对抗 `41cc8804` 同 C=1，另指出 `run_command` 未关窗会再跑。均已在 `f90872b` 修。
+- **分支审查：** Spec `f3ce8a10` C=1 I=2（Action 未绑窗口镜像；`allow_delete` 未接线；claim 不要求 `execution_started`）；Quality `fea1c056` C=0 I=5（其中 claim/kind 已在 `f90872b` 修；剩余尾部 rename、symlink 当删除、`read_file` 无界 readline）。
 - **硬门槛测试 1–8：** 双连接仅一 claim；双 recover 不得双执行；无 claim 零写盘；错/旧 claim 拒绝；claim 一次性；混合 pre/post error；run_command recover 不重跑；正常 permit 路径无需 claim。均已通过。
 - **Human edits：** none
 - **红灯：** 缺 `executor` / `claim` / `UnauthorizedError`
-- **绿灯：** `test_executor` 初版 10 passed；复审修复后 14 passed；全量 **242 passed, 3 skipped**
+- **绿灯：** `test_executor` 初版 10 passed；全量 **247 passed, 4 skipped**
 - **实现 commit：** `7afede0369ac0326931d07cee16139161718f110`
 - **推送：** `feat/f-tools`（不合并、不执行 T25）
 
