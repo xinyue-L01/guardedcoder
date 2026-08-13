@@ -15,7 +15,7 @@
 - TDD：先红后绿；保存红灯证据。
 - 每个实现 task 一个新鲜 subagent；commit/PR 注明来源与人工修改。
 - 每个大模块一个 worktree / PR；**worktree 必须从依赖 PR 已合并的最新 `main` 创建**，禁止一次性从旧 base 开全部 worktree。
-- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。下一实现 task 为 T01；本 G1 回合不执行 T01。
+- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。下一实现 task 为 T06（PR-B；以状态表为准）。本 PR-A 在 T05 停止。
 - API Key 只进 keyring；不进 TOML/Git/日志/状态/记忆/Mock。
 - 五工具 + `finish`；不为演示新增 network/push/publish。
 - 完整 patch 禁止静默截断。
@@ -53,12 +53,12 @@ Human edits: <none|简述>
 | ID | 模块 | Status | Commit | PR / worktree |
 |---|---|---|---|---|
 | G0 | 冷启动（仓库外试做 T01+T02） | passed | — | G0 已签署；disposable 未进正式仓 |
-| G1 | Git / GitHub / AGENT_LOG 基线 | done | 53075f05fc5097655d7f5b2f1113b2fbc884da4c | 正式仓 main；无 origin |
-| T01 | 工程骨架 + pip-tools | pending | — | WT-A / PR-A |
-| T02 | 状态枚举 | pending | — | WT-A / PR-A |
-| T03 | 动作 schema | pending | — | WT-A / PR-A |
-| T04 | 信封模型 | pending | — | WT-A / PR-A |
-| T05 | 指纹 | pending | — | WT-A / PR-A |
+| G1 | Git / GitHub / AGENT_LOG 基线 | done | 53075f05fc5097655d7f5b2f1113b2fbc884da4c | 正式仓 main；origin https://github.com/xinyue-L01/guardedcoder |
+| T01 | 工程骨架 + pip-tools | done | 0421cc9463e304c1dadfd293aaab253108f8a4d5 | WT-A `.worktrees/wt-a-foundation`；已推送；Draft PR 未创建（gh 未安装） |
+| T02 | 状态枚举 | done | ba3e36cb2ba812c57bc3f9340b1171b2495eb3ba | WT-A / PR-A |
+| T03 | 动作 schema | done | 92a671f0c9afed19fe714a708fcf24e3af6d27fb | WT-A / PR-A |
+| T04 | 信封模型 | done | 95d11d261233ee05336019567480f6e2a8044d68 | WT-A / PR-A |
+| T05 | 指纹 | done | bf52b007645c0ae165066efd5482b1aa0e36a5a6 | WT-A / PR-A |
 | T06 | AppConfig | pending | — | WT-B / PR-B |
 | T07 | TOML 校验 | pending | — | WT-B / PR-B |
 | T08 | 信封合成 | pending | — | WT-B / PR-B |
@@ -285,7 +285,7 @@ Status: passed | Commit: —
 - [x] 写安全 `.gitignore`
 - [x] 写 `AGENT_LOG.md` 模板 + 已发生过程摘要
 - [x] 提交 SPEC.md / PLAN.md / SPEC_PROCESS.md / .gitignore / AGENT_LOG.md 基线
-- [x] 真实 GitHub 仓库尚未创建 → **保持无 origin**（未写入虚假 URL）
+- [x] 真实 GitHub origin：https://github.com/xinyue-L01/guardedcoder
 - [x] 后续 worktree 规则已在 PLAN；AGENT_LOG 已记录
 
 **绿灯：** 基线 commit `53075f05fc5097655d7f5b2f1113b2fbc884da4c`。**仍不得把 T01–T43 标 done。** 本回合不执行 T01。
@@ -295,6 +295,17 @@ Status: done | Commit: 53075f05fc5097655d7f5b2f1113b2fbc884da4c
 ---
 
 ## Task 01: 工程骨架 + pip-tools + setuptools
+
+**状态：** done · 实现 commit `0421cc9463e304c1dadfd293aaab253108f8a4d5`
+
+- [x] 写失败测试
+- [x] 跑红灯命令，记录预期失败
+- [x] 最小实现
+- [x] 跑绿灯命令
+- [x] 重构并回归测试
+- [x] spec 合规审查（Critical 必修）
+- [x] 代码质量审查（Critical 必修）
+- [x] commit（含 Subagent / Human edits）+ 追加 `AGENT_LOG.md` + 更新本 PLAN 状态栏
 
 **目标：** 可编辑安装；权威测试命令 `python -m pytest`；带 hash 的锁文件。不把私有/系统镜像 URL 写入提交的锁文件。  
 **依赖：** G1 签字完成。  
@@ -325,6 +336,17 @@ python -m piptools compile --generate-hashes --allow-unsafe --index-url https://
 
 ## Task 02: RunState / ArtifactState
 
+**状态：** done · 实现 commit `ba3e36cb2ba812c57bc3f9340b1171b2495eb3ba`
+
+- [x] 写失败测试
+- [x] 跑红灯命令，记录预期失败
+- [x] 最小实现
+- [x] 跑绿灯命令
+- [x] 重构并回归测试
+- [x] spec 合规审查（Critical 必修）
+- [x] 代码质量审查（Critical 必修）
+- [x] commit（含 Subagent / Human edits）+ 追加 `AGENT_LOG.md` + 更新本 PLAN 状态栏
+
 **依赖：** T01。  
 **路径：** `src/guardedcoder/models/__init__.py`, `src/guardedcoder/models/enums.py`, `tests/test_enums.py`
 
@@ -343,6 +365,17 @@ python -m piptools compile --generate-hashes --allow-unsafe --index-url https://
 
 ## Task 03: 动作 schema
 
+**状态：** done · 实现 commit `92a671f0c9afed19fe714a708fcf24e3af6d27fb`（含 schema 收紧 `92a671f`）
+
+- [x] 写失败测试
+- [x] 跑红灯命令，记录预期失败
+- [x] 最小实现
+- [x] 跑绿灯命令
+- [x] 重构并回归测试
+- [x] spec 合规审查（Critical 必修）
+- [x] 代码质量审查（Critical 必修）
+- [x] commit（含 Subagent / Human edits）+ 追加 `AGENT_LOG.md` + 更新本 PLAN 状态栏
+
 **依赖：** T02。路径：`models/actions.py`, `errors.py`, `tests/test_actions.py`  
 失败测试：合法 `list_dir`；`{"action":"network"}` 与 extra 字段、超大 JSON → `ActionParseError`。  
 红灯：`pytest tests/test_actions.py -v`。
@@ -351,6 +384,17 @@ python -m piptools compile --generate-hashes --allow-unsafe --index-url https://
 
 ## Task 04: Envelope / CommandProfile
 
+**状态：** done · 实现 commit `95d11d261233ee05336019567480f6e2a8044d68`
+
+- [x] 写失败测试
+- [x] 跑红灯命令，记录预期失败
+- [x] 最小实现
+- [x] 跑绿灯命令
+- [x] 重构并回归测试
+- [x] spec 合规审查（Critical 必修）
+- [x] 代码质量审查（Critical 必修）
+- [x] commit（含 Subagent / Human edits）+ 追加 `AGENT_LOG.md` + 更新本 PLAN 状态栏
+
 **依赖：** T03。路径：`models/envelope.py`, `tests/test_envelope.py`  
 `frozen=True, extra=forbid`；`envelope_hash` 稳定；profile 可含 `junit_out` 占位说明字段 `argv_template: list[str]`。  
 失败测试：两次 hash 相等；未知字段 ValidationError。
@@ -358,6 +402,17 @@ python -m piptools compile --generate-hashes --allow-unsafe --index-url https://
 ---
 
 ## Task 05: 指纹绑定上下文
+
+**状态：** done · 实现 commit `bf52b007645c0ae165066efd5482b1aa0e36a5a6`
+
+- [x] 写失败测试
+- [x] 跑红灯命令，记录预期失败
+- [x] 最小实现
+- [x] 跑绿灯命令
+- [x] 重构并回归测试
+- [x] spec 合规审查（Critical 必修）
+- [x] 代码质量审查（Critical 必修）
+- [x] commit（含 Subagent / Human edits）+ 追加 `AGENT_LOG.md` + 更新本 PLAN 状态栏
 
 **依赖：** T04。路径：`fingerprint.py`, `tests/test_fingerprint.py`  
 失败测试：仅 `task_id` 不同则 fingerprint 不同；相同输入稳定。
