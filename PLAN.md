@@ -68,7 +68,7 @@ Human edits: <none|简述>
 | T12 | 路径围栏 | done | 6ce301aac696ba0d1cdcef9f6320682958c520d9 | WT-D / PR-D |
 | T13 | 硬规则与 profile 分码 | done | dcb5be736912c184fd41aa9af2c18036b31526ad | WT-D / PR-D |
 | T14 | 风险分类 | done | 2423edd5ba9a930966057afe82ec57aa6ada6eb1 | WT-D / PR-D |
-| T15 | 治理求交评估 | pending | — | WT-D / PR-D |
+| T15 | 治理求交评估 | done | 78b8beef5c7a9d044a7076d4c60905d3a8895090 | WT-D / PR-D |
 | T16 | SQLite、Task、AuditEvent 脱敏 | pending | — | WT-E / PR-E |
 | T17 | M8 创建并消费 permit | pending | — | WT-E / PR-E |
 | T18 | apply_patch 窗口恢复 | pending | — | WT-E / PR-E |
@@ -544,6 +544,17 @@ T30 将扩展门控行为，本 task 只做序列。
 ---
 
 ## Task 15: evaluate 求交
+
+**状态：** done · 实现 commit `78b8beef5c7a9d044a7076d4c60905d3a8895090`
+
+- [x] 写失败测试
+- [x] 跑红灯命令，记录预期失败
+- [x] 最小实现
+- [x] 跑绿灯命令
+- [x] 重构并回归测试
+- [x] spec 合规审查（Critical 必修）
+- [x] 代码质量审查（Critical 必修）
+- [x] commit（含 Subagent / Human edits）+ 追加 `AGENT_LOG.md` + 更新本 PLAN 状态栏
 
 **依赖：** T14。路径：`governance/evaluate.py`, `models/task.py`, `tests/test_evaluate.py`  
 未知 profile → `NeedEnvelopeRevision/COMMAND_NOT_ALLOWED`；预算 0 → Deny；后层不能把 Deny 改 Allow。

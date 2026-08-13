@@ -231,6 +231,20 @@
 - **绿灯：** `test_classify` 8 passed；全量 **96 passed, 1 skipped**。
 - **实现 commit：** `2423edd5ba9a930966057afe82ec57aa6ada6eb1`
 
+---
+
+## 2026-08-14 · T15 治理求交评估（WT-D）
+
+- **Task：** T15（WT-D / `feat/d-governance`）。未执行 T16。未合并 PR-D。
+- **Implementer：** `acdc0eb3-2ae3-4917-8f10-e39f0d10ff37`
+- **Spec reviewer：** `e7886828-a75c-482f-bae4-92579d4dc7ff` → Spec ✅
+- **Quality reviewer：** `53ea4328-3656-4a3e-8822-3be93cc94f18` → Approved。C/I/M=0。
+- **Human edits：** none
+- **红灯：** `ModuleNotFoundError: No module named 'guardedcoder.governance.evaluate'`
+- **绿灯：** `test_evaluate` 9 passed；全量 **105 passed, 1 skipped**。
+- **实现 commit：** `78b8beef5c7a9d044a7076d4c60905d3a8895090`
+
+
 
 
 
