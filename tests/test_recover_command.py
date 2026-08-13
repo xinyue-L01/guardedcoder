@@ -29,7 +29,7 @@ def _create(conn: sqlite3.Connection, workspace: Path) -> None:
         artifact_state="worktree_present",
         repo_path=str(workspace),
         base_commit="abc",
-        worktree_identity="wt-1",
+        worktree_identity=str(workspace.resolve()),
         envelope_hash="env-1",
         remaining_steps=10,
     )

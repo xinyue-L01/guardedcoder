@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import hashlib
 import json
+import re
 import sqlite3
 import uuid
 from typing import Any
@@ -15,23 +15,24 @@ from guardedcoder.errors import (
 from guardedcoder.persist.txn import write_txn
 
 
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
 def _store_image(image: dict | None) -> str | None:
     if image is None:
         return None
     stored: dict[str, dict[str, object]] = {}
     for rel, value in image.items():
-        if isinstance(value, dict) and "exists" in value:
-            stored[rel] = {
-                "exists": bool(value["exists"]),
-                "sha256": value.get("sha256"),
-            }
-        elif isinstance(value, str):
-            stored[rel] = {
-                "exists": True,
-                "sha256": hashlib.sha256(value.encode("utf-8")).hexdigest(),
-            }
-        else:
-            raise PermitInvalidError("preimage/postimage entries must be marks or text")
+        if not isinstance(value, dict) or "exists" not in value or "sha256" not in value:
+            raise PermitInvalidError("preimage/postimage must be {exists, sha256} marks")
+        exists = bool(value["exists"])
+        digest = value["sha256"]
+        if exists:
+            if not isinstance(digest, str) or _SHA256_RE.fullmatch(digest) is None:
+                raise PermitInvalidError("sha256 mark must be 64 lowercase hex chars")
+        elif digest is not None:
+            raise PermitInvalidError("missing file mark must use sha256=null")
+        stored[rel] = {"exists": exists, "sha256": digest}
     return json.dumps(stored, ensure_ascii=False)
 
 
@@ -69,22 +70,35 @@ def create_permit(
             )
         if task[3] != envelope_hash:
             raise PermitInvalidError(f"envelope_hash mismatch for task {task_id}")
+        if task[0] not in {"running", "verifying", "awaiting_approval"}:
+            raise PermitInvalidError(
+                f"cannot create permit from run_state {task[0]!r}"
+            )
         if task[0] in {"executing_action", "applying"} or _active_window(conn, task_id):
             raise ExecutionWindowOpenError(
                 f"task {task_id} already has an active execution window"
             )
         if task[2] <= 0:
             raise ValueError(f"budget exhausted for task {task_id}")
+        if task[0] == "awaiting_approval" and pending_action_id is None:
+            raise PermitInvalidError(
+                "awaiting_approval requires a consumed pending_action_id"
+            )
         if pending_action_id is not None:
             pending = conn.execute(
-                "SELECT task_id, consumed FROM pending_actions "
+                "SELECT task_id, consumed, fingerprint FROM pending_actions "
                 "WHERE pending_action_id = ?",
                 (pending_action_id,),
             ).fetchone()
-            if pending is None or pending[0] != task_id or not pending[1]:
+            if (
+                pending is None
+                or pending[0] != task_id
+                or not pending[1]
+                or pending[2] != fingerprint
+            ):
                 raise PermitInvalidError(
-                    f"pending_action_id {pending_action_id} is not a consumed "
-                    f"pending action for task {task_id}"
+                    f"pending_action_id {pending_action_id} does not match "
+                    f"consumed pending fingerprint for task {task_id}"
                 )
         cur = conn.execute(
             "UPDATE tasks SET remaining_steps = remaining_steps - 1, "

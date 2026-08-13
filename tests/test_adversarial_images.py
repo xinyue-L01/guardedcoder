@@ -28,9 +28,9 @@ def _create(conn: sqlite3.Connection, workspace: Path) -> None:
         task_id="t1",
         run_state="running",
         artifact_state="worktree_present",
-        repo_path=str(workspace.resolve()),
+        repo_path="/orig-repo",
         base_commit="abc",
-        worktree_identity="wt-1",
+        worktree_identity=str(workspace.resolve()),
         envelope_hash="env-1",
         remaining_steps=10,
     )

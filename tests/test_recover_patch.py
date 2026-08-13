@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import sqlite3
 from pathlib import Path
 
@@ -18,15 +19,25 @@ def _write(root: Path, rel: str, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def _mark(exists: bool, content: str | None = None) -> dict:
+    if not exists:
+        return {"exists": False, "sha256": None}
+    assert content is not None
+    return {
+        "exists": True,
+        "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+    }
+
+
 def _create(conn: sqlite3.Connection, workspace: Path) -> None:
     create_task(
         conn,
         task_id="t1",
         run_state="running",
         artifact_state="worktree_present",
-        repo_path=str(workspace),
+        repo_path="/orig-repo",
         base_commit="abc",
-        worktree_identity="wt-1",
+        worktree_identity=str(workspace.resolve()),
         envelope_hash="env-1",
         remaining_steps=10,
     )
@@ -52,8 +63,8 @@ def _open_patch_window(
         permit_id=permit_id,
         expected_revision=2,
         action_kind="apply_patch",
-        preimage=preimage,
-        postimage=postimage,
+        preimage={path: _mark(True, body) for path, body in preimage.items()},
+        postimage={path: _mark(True, body) for path, body in postimage.items()},
     )
 
 

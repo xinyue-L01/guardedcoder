@@ -114,6 +114,16 @@ def test_approval_permit_must_match_consumed_pending(tmp_path) -> None:
             pending_action_id=pending_id,
         )
     approve(conn, "t1", "fp-1")
+    with pytest.raises(PermitInvalidError):
+        create_permit(
+            conn,
+            task_id="t1",
+            action_id="a1",
+            fingerprint="fp-other",
+            envelope_hash="env-1",
+            expected_revision=1,
+            pending_action_id=pending_id,
+        )
     permit_id = create_permit(
         conn,
         task_id="t1",
@@ -172,3 +182,51 @@ def test_verifying_window_does_not_set_executing_action(tmp_path) -> None:
         "SELECT status FROM execution_windows WHERE task_id = ?", ("t1",)
     ).fetchone()[0]
     assert status == "executing_action"
+
+
+def test_awaiting_approval_rejects_auto_permit(tmp_path) -> None:
+    conn = connect(tmp_path / "g.db")
+    create_task(
+        conn,
+        task_id="t1",
+        run_state="awaiting_approval",
+        artifact_state="worktree_present",
+        repo_path="/repo",
+        base_commit="abc",
+        worktree_identity="wt-1",
+        envelope_hash="env-1",
+        remaining_steps=10,
+    )
+    with pytest.raises(PermitInvalidError):
+        create_permit(
+            conn,
+            task_id="t1",
+            action_id="a1",
+            fingerprint="fp-1",
+            envelope_hash="env-1",
+            expected_revision=1,
+        )
+
+
+def test_succeeded_rejects_new_permit(tmp_path) -> None:
+    conn = connect(tmp_path / "g.db")
+    create_task(
+        conn,
+        task_id="t1",
+        run_state="succeeded",
+        artifact_state="patch_ready",
+        repo_path="/repo",
+        base_commit="abc",
+        worktree_identity="wt-1",
+        envelope_hash="env-1",
+        remaining_steps=10,
+    )
+    with pytest.raises(PermitInvalidError):
+        create_permit(
+            conn,
+            task_id="t1",
+            action_id="a1",
+            fingerprint="fp-1",
+            envelope_hash="env-1",
+            expected_revision=1,
+        )

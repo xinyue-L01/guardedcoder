@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
+import stat
 from pathlib import Path
 from typing import Any
 
@@ -17,12 +19,25 @@ def _file_mark(workspace: Path, rel: str) -> dict[str, object] | None:
     path = workspace / rel
     if path.is_symlink():
         return None
-    if not path.exists():
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    if hasattr(os, "O_BINARY"):
+        flags |= os.O_BINARY
+    try:
+        fd = os.open(path, flags)
+    except FileNotFoundError:
         return {"exists": False, "sha256": None}
-    if not path.is_file():
+    except OSError:
         return None
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    return {"exists": True, "sha256": digest}
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode):
+            return None
+        digest = hashlib.sha256(os.read(fd, info.st_size)).hexdigest()
+        return {"exists": True, "sha256": digest}
+    finally:
+        os.close(fd)
 
 
 def _matches_image(workspace: Path, image: dict | None) -> bool | None:
@@ -55,12 +70,12 @@ def recover(
     if win is None:
         raise LookupError(f"no open execution window for task {task_id}")
     task = conn.execute(
-        "SELECT repo_path, state_revision FROM tasks WHERE task_id = ?",
+        "SELECT worktree_identity, state_revision FROM tasks WHERE task_id = ?",
         (task_id,),
     ).fetchone()
     if task is None:
         raise LookupError(f"task {task_id} not found")
-    owned = Path(task["repo_path"]).resolve()
+    owned = Path(task["worktree_identity"]).resolve()
     kind = win["action_kind"]
     if workspace.resolve() != owned:
         new_status = "error"
@@ -84,6 +99,10 @@ def recover(
             new_status = "succeeded"
             new_run_state = "running"
         elif match_pre:
+            if task["state_revision"] != expected_revision:
+                raise StaleRevisionError(
+                    f"stale revision for task {task_id}: expected {expected_revision}"
+                )
             return
         else:
             new_status = "error"

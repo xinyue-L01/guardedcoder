@@ -110,7 +110,12 @@ def test_consume_opens_window_and_sets_executing_action(tmp_path) -> None:
         permit_id=permit_id,
         expected_revision=2,
         action_kind="apply_patch",
-        preimage={"a.txt": "x"},
+        preimage={
+            "a.txt": {
+                "exists": True,
+                "sha256": hashlib.sha256(b"x").hexdigest(),
+            }
+        },
         postimage=None,
     )
     task = _task(conn)

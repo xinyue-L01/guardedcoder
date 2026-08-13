@@ -48,6 +48,9 @@ CREATE TABLE IF NOT EXISTS permits (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_permit_unconsumed
     ON permits(task_id) WHERE consumed = 0;
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_permit_pending
+    ON permits(pending_action_id) WHERE pending_action_id IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS execution_windows (
     window_id TEXT PRIMARY KEY,
     task_id TEXT NOT NULL REFERENCES tasks(task_id),
