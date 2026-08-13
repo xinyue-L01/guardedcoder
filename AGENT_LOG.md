@@ -134,6 +134,7 @@
 - **Spec reviewer：** `38d4dd69-cfa4-4e18-baed-f3ddaa0c61af` → Approved
 - **Quality reviewer：** 初审 `9fac507d-6064-4db1-84e8-303707a295f6` Needs fixes；复审 `43497b27-00f8-4ea0-aa39-9aceea224120` Approved
 - **Human edits：** none
+- **红灯：** `ModuleNotFoundError: No module named 'guardedcoder.config'`
 - **绿灯：** 修复后 `test_config_load` 12 passed；全量 **30 passed**
 - **实现 commit：** `856630970d6a93f634fefa5bdd95958dcc06aeb7`；decode `2b882a53bc33b517a514e923c0f8d3f94ff9a155`
 
@@ -163,6 +164,32 @@
 - **红灯：** `ModuleNotFoundError: No module named 'guardedcoder.governance'`
 - **绿灯：** `test_config_hard_rules` 7 passed；全量 **44 passed**。
 - **实现 commit：** `840129835f79aa89e0ed95e15b7df337f02a99ba`
+
+---
+
+## 2026-08-14 · T10 MockLLM（WT-C）
+
+- **Implementer：** `5019ad99-f365-46ff-a182-10f79ff1842a`
+- **Spec reviewer：** `1e45a676-fc6e-4b1a-86b6-47199fe8d2b6` → Approved
+- **Quality reviewer：** `62e14274-592f-4195-9131-dbe5a6b749fc` → Approved
+- **Human edits：** none
+- **红灯：** `SecretLeakError` / LLM 模块导入失败
+- **绿灯：** 全量 **19 passed**
+- **实现 commit：** `1fbba589d6e4a919756cd8e7765c3bb14cdddf0e`
+
+---
+
+## 2026-08-14 · T11 OpenAICompatibleLLM（WT-C）
+
+- **Implementer：** `c0d78c08-0b5c-4963-b278-6f9cc6d5e06a`
+- **Fixer：** `579b90dd-c4df-46eb-abd1-9c359bb1f996`（HTTP scheme 大小写）
+- **Spec reviewer：** 初审 `684f3055-4e75-446e-9d23-851c12c2feb6` Needs fixes；复审 `8ff3abaa-1b06-48fe-8cb6-95bf5169bf37` Spec ✅
+- **Quality reviewer：** `22f9d011-89a5-441a-8b92-cc02ad1fa6c1` → Approved
+- **Human edits：** none
+- **红灯：** `RemoteKeyHttpError` / openai_compat 模块导入失败
+- **绿灯：** 修复后 `test_openai_compat` 8 passed；全量 **27 passed**
+- **实现 commit：** `8afe6c20d14b84f3c1211bb63e03e7d19cd8fcb5`；scheme `44edd47821598ebd4e898c0e1a9ef91c7965e488`
+
 
 
 

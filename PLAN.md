@@ -15,7 +15,7 @@
 - TDD：先红后绿；保存红灯证据。
 - 每个实现 task 一个新鲜 subagent；commit/PR 注明来源与人工修改。
 - 每个大模块一个 worktree / PR；**worktree 必须从依赖 PR 已合并的最新 `main` 创建**，禁止一次性从旧 base 开全部 worktree。
-- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。下一实现 task 为 T06（PR-B；以状态表为准）。本 PR-A 在 T05 停止。
+- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。下一实现 task 为 T12（PR-D；以状态表为准）。本 PR-C 在 T11 停止。
 - API Key 只进 keyring；不进 TOML/Git/日志/状态/记忆/Mock。
 - 五工具 + `finish`；不为演示新增 network/push/publish。
 - 完整 patch 禁止静默截断。
@@ -63,8 +63,8 @@ Human edits: <none|简述>
 | T07 | TOML 校验 | done | 2b882a53bc33b517a514e923c0f8d3f94ff9a155 | WT-B / PR-B |
 | T08 | 信封合成 | done | d7658c0e66cefeffddda3ce44af088437729dfda | WT-B / PR-B |
 | T09 | 配置不能放宽硬规则 | done | 840129835f79aa89e0ed95e15b7df337f02a99ba | WT-B / PR-B |
-| T10 | MockLLM | pending | — | WT-C / PR-C |
-| T11 | OpenAICompatibleLLM | pending | — | WT-C / PR-C |
+| T10 | MockLLM | done | 1fbba589d6e4a919756cd8e7765c3bb14cdddf0e | WT-C / PR-C |
+| T11 | OpenAICompatibleLLM | done | 44edd47821598ebd4e898c0e1a9ef91c7965e488 | WT-C / PR-C |
 | T12 | 路径围栏 | pending | — | WT-D / PR-D |
 | T13 | 硬规则与 profile 分码 | pending | — | WT-D / PR-D |
 | T14 | 风险分类 | pending | — | WT-D / PR-D |
@@ -471,6 +471,8 @@ python -m piptools compile --generate-hashes --allow-unsafe --index-url https://
 
 ## Task 10: MockLLM
 
+**状态：** done · 实现 commit `1fbba589d6e4a919756cd8e7765c3bb14cdddf0e`
+
 **依赖：** T05。路径：`llm/port.py`, `llm/mock.py`, `tests/test_mock_llm.py`  
 序列响应；耗尽异常；messages 含拼接假 key 则 `SecretLeakError`。  
 T30 将扩展门控行为，本 task 只做序列。
@@ -478,6 +480,8 @@ T30 将扩展门控行为，本 task 只做序列。
 ---
 
 ## Task 11: OpenAICompatibleLLM
+
+**状态：** done · 实现 commit `8afe6c20d14b84f3c1211bb63e03e7d19cd8fcb5`；scheme `44edd47821598ebd4e898c0e1a9ef91c7965e488`
 
 **依赖：** T10。路径：`llm/openai_compat.py`, `tests/test_openai_compat.py`  
 远程 HTTP+key 拒绝且不发请求；loopback HTTP 允许；`follow_redirects=False`；3xx 不跟。  
