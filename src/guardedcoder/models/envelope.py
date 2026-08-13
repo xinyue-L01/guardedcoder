@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Annotated, Self
+from typing import Annotated
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, computed_field
 
 
 def _freeze_str_seq(value: object) -> tuple[str, ...]:
@@ -39,12 +39,10 @@ class Envelope(_FrozenStrict):
     allow_delete: bool
     allow_network: bool
     config_digest: str
-    envelope_hash: str = ""
 
-    @model_validator(mode="after")
-    def _fill_hash(self) -> Self:
+    @computed_field
+    @property
+    def envelope_hash(self) -> str:
         payload = self.model_dump(mode="json", exclude={"envelope_hash"})
         canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-        object.__setattr__(self, "envelope_hash", digest)
-        return self
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()

@@ -40,6 +40,23 @@ def test_unknown_field_raises_validation_error() -> None:
         Envelope(**_envelope_kwargs(), extra=True)
 
 
+def test_explicit_envelope_hash_raises_validation_error() -> None:
+    with pytest.raises(ValidationError):
+        Envelope(**_envelope_kwargs(), envelope_hash="deadbeef")
+
+
+# Canonical JSON of Envelope fields excluding envelope_hash (sort_keys=True,
+# separators=(",", ":")), then SHA-256. Computed independently of Envelope.
+_PINNED_ENVELOPE_HASH = (
+    "06694b4f73d148902ba8baa28be3110ed98a3b32a8ef22761b707a9829ba6f45"
+)
+
+
+def test_envelope_hash_matches_pinned_digest() -> None:
+    env = Envelope(**_envelope_kwargs())
+    assert env.envelope_hash == _PINNED_ENVELOPE_HASH
+
+
 def test_argv_template_is_frozen_tuple() -> None:
     src = ["pytest", "--junitxml", "{junit_out}"]
     profile = CommandProfile(
