@@ -46,3 +46,17 @@
 - **文档：** PLAN G1 备注改为真实 origin `https://github.com/xinyue-L01/guardedcoder`；下一实现 task 改为 T02（以状态表为准）。
 - **Human edits：** 产品负责人根据 Codex 独立审查下达本卫生修正；未执行 T02。
 
+---
+
+## 2026-08-14 · T02 RunState / ArtifactState
+
+- **Task：** T02（WT-A / `feat/a-foundation`）。未执行 T03。
+- **Implementer：** Cursor generalPurpose subagent `312defdd-7a53-423a-9d3d-64feda9860fe`
+- **Spec reviewer：** `4b1742bd-1b1a-47a4-bd04-05ebcb43ce76` → Spec compliant，Approved；无 Critical/Important。
+- **Quality reviewer：** `f0a477bf-29b2-49f8-8a6f-99413dccfbb3` → Approved；无问题。
+- **Human edits：** none
+- **红灯：** 仅有 `tests/test_enums.py` 时 `.\.venv\Scripts\python.exe -m pytest tests/test_enums.py -v` → `ModuleNotFoundError: No module named 'guardedcoder.models'`（预期）。
+- **绿灯：** 同命令 2 passed；全量 `python -m pytest` **3 passed**（controller 复跑确认）。
+- **实现 commit：** `ba3e36cb2ba812c57bc3f9340b1171b2495eb3ba`
+
+
