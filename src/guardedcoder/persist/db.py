@@ -54,13 +54,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_permit_pending
 CREATE TABLE IF NOT EXISTS execution_windows (
     window_id TEXT PRIMARY KEY,
     task_id TEXT NOT NULL REFERENCES tasks(task_id),
-    permit_id TEXT NOT NULL REFERENCES permits(permit_id),
+    permit_id TEXT REFERENCES permits(permit_id),
     action_kind TEXT NOT NULL,
     status TEXT NOT NULL,
     preimage_json TEXT,
     postimage_json TEXT,
     opened_revision INTEGER NOT NULL,
-    source_run_state TEXT NOT NULL
+    source_run_state TEXT NOT NULL,
+    fingerprint TEXT
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_window_active
@@ -86,7 +87,10 @@ def connect(path: str | Path) -> sqlite3.Connection:
 
 
 def _migrate_execution_windows(conn: sqlite3.Connection) -> None:
-    cols = {row[1] for row in conn.execute("PRAGMA table_info(execution_windows)")}
+    info = list(conn.execute("PRAGMA table_info(execution_windows)"))
+    if not info:
+        return
+    cols = {row[1]: row for row in info}
     if "opened_revision" not in cols:
         conn.execute(
             "ALTER TABLE execution_windows ADD COLUMN opened_revision INTEGER"
@@ -95,3 +99,66 @@ def _migrate_execution_windows(conn: sqlite3.Connection) -> None:
         conn.execute(
             "ALTER TABLE execution_windows ADD COLUMN source_run_state TEXT"
         )
+    if "fingerprint" not in cols:
+        conn.execute("ALTER TABLE execution_windows ADD COLUMN fingerprint TEXT")
+        info = list(conn.execute("PRAGMA table_info(execution_windows)"))
+        cols = {row[1]: row for row in info}
+    permit = cols.get("permit_id")
+    if permit is not None and permit[3]:
+        _rebuild_execution_windows_permit_nullable(conn)
+
+
+def _rebuild_execution_windows_permit_nullable(conn: sqlite3.Connection) -> None:
+    conn.execute("DROP INDEX IF EXISTS idx_window_active")
+    conn.execute("ALTER TABLE execution_windows RENAME TO execution_windows_legacy")
+    conn.execute(
+        """
+        CREATE TABLE execution_windows (
+            window_id TEXT PRIMARY KEY,
+            task_id TEXT NOT NULL REFERENCES tasks(task_id),
+            permit_id TEXT REFERENCES permits(permit_id),
+            action_kind TEXT NOT NULL,
+            status TEXT NOT NULL,
+            preimage_json TEXT,
+            postimage_json TEXT,
+            opened_revision INTEGER NOT NULL,
+            source_run_state TEXT NOT NULL,
+            fingerprint TEXT
+        )
+        """
+    )
+    legacy = {row[1] for row in conn.execute("PRAGMA table_info(execution_windows_legacy)")}
+    dest = (
+        "window_id",
+        "task_id",
+        "permit_id",
+        "action_kind",
+        "status",
+        "preimage_json",
+        "postimage_json",
+        "opened_revision",
+        "source_run_state",
+        "fingerprint",
+    )
+    copied: list[str] = []
+    selected: list[str] = []
+    for name in dest:
+        if name not in legacy:
+            continue
+        copied.append(name)
+        if name == "opened_revision":
+            selected.append("COALESCE(opened_revision, 0)")
+        elif name == "source_run_state":
+            selected.append("COALESCE(source_run_state, '')")
+        else:
+            selected.append(name)
+    conn.execute(
+        f"INSERT INTO execution_windows ({', '.join(copied)}) "
+        f"SELECT {', '.join(selected)} FROM execution_windows_legacy"
+    )
+    conn.execute("DROP TABLE execution_windows_legacy")
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_window_active "
+        "ON execution_windows(task_id) "
+        "WHERE status IN ('executing_action', 'applying')"
+    )
