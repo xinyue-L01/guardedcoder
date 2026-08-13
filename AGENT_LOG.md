@@ -190,6 +190,78 @@
 - **绿灯：** 修复后 `test_openai_compat` 8 passed；全量 **27 passed**
 - **实现 commit：** `8afe6c20d14b84f3c1211bb63e03e7d19cd8fcb5`；scheme `44edd47821598ebd4e898c0e1a9ef91c7965e488`
 
+---
+
+## 2026-08-14 · T12 路径围栏（WT-D）
+
+- **Task：** T12（WT-D / `feat/d-governance`）。未执行 T13。
+- **Implementer：** `fdf2e2a3-21c5-4e53-bc2f-c8290c628579`
+- **Fixer：** `09990800-332c-446b-bb4b-cda40247a55a`（`.ENV` 大小写、祖先 `.env.*`、`is_relative_to`）
+- **Spec reviewer：** `6fd26715-bbc2-4f3f-9d9e-60c2c78dea24` → Spec ✅
+- **Quality reviewer：** 初审 `e3a08dc1-215a-47ed-8b24-e2d0e2de8d70` Needs fixes；复审 `e8008e47-6a15-430a-bcb4-477510b28469` Approved。C/I=0。
+- **Human edits：** none
+- **红灯：** `ModuleNotFoundError: No module named 'guardedcoder.governance.fence'`；修复前 `.ENV`→ok、祖先 `.env.*` 误敏、`..foo` 误逃逸。
+- **绿灯：** 修复后 `test_fence` 8 passed / 1 skipped；全量 **64 passed, 1 skipped**。
+- **实现 commit：** `a262669dac93b01846aba41e0083415ebc60572f`；收紧 `6ce301aac696ba0d1cdcef9f6320682958c520d9`
+
+---
+
+## 2026-08-14 · T13 硬规则与 profile 分码（WT-D）
+
+- **Task：** T13（WT-D / `feat/d-governance`）。未执行 T14。
+- **Implementer：** `63b18d80-0640-4cac-a9aa-c88db25d11b1`
+- **Fixer：** `c8c81f29-7dd4-4809-ae4e-1b432f3a224f`（argv token 不用宿主 Path）
+- **Spec reviewer：** `5b8f41e4-994a-4e0e-800d-4adf3fed863a` → Spec ✅。Minor：su/runas/pkexec 无专测。
+- **Quality reviewer：** 初审 `8a2582c1-ad30-4b5f-a4fc-201cb0386043` Needs fixes；复审 `e343d2df-eec4-4421-9234-b664d8788d4d` Approved。C/I=0。
+- **Human edits：** none
+- **红灯：** `ImportError: cannot import name 'ProfileKind'`
+- **绿灯：** 修复后全量 **88 passed, 1 skipped**。
+- **实现 commit：** `81529a15a5880fdcd952abcc42479ba213515019`；规范化 `dcb5be736912c184fd41aa9af2c18036b31526ad`
+
+---
+
+## 2026-08-14 · T14 风险分类（WT-D）
+
+- **Task：** T14（WT-D / `feat/d-governance`）。未执行 T15。
+- **Implementer：** `ac8faf42-7072-4216-92e7-48d24be29529`
+- **Spec reviewer：** `3757b5be-a5a0-4233-88cb-40fff6bda72b` → Spec ✅
+- **Quality reviewer：** `eb0dca3a-a156-4a3e-a8dd-7be62f4e6f02` → Approved。C/I/M=0。
+- **Human edits：** none
+- **红灯：** `No module named 'guardedcoder.governance.classify'`
+- **绿灯：** `test_classify` 8 passed；全量 **96 passed, 1 skipped**。
+- **实现 commit：** `2423edd5ba9a930966057afe82ec57aa6ada6eb1`
+
+---
+
+## 2026-08-14 · T15 治理求交评估（WT-D）
+
+- **Task：** T15（WT-D / `feat/d-governance`）。未执行 T16。未合并 PR-D。
+- **Implementer：** `acdc0eb3-2ae3-4917-8f10-e39f0d10ff37`
+- **Spec reviewer：** `e7886828-a75c-482f-bae4-92579d4dc7ff` → Spec ✅
+- **Quality reviewer：** `53ea4328-3656-4a3e-8822-3be93cc94f18` → Approved。C/I/M=0。
+- **Human edits：** none
+- **红灯：** `ModuleNotFoundError: No module named 'guardedcoder.governance.evaluate'`
+- **绿灯：** `test_evaluate` 9 passed；全量 **105 passed, 1 skipped**。
+- **实现 commit：** `78b8beef5c7a9d044a7076d4c60905d3a8895090`
+
+---
+
+## 2026-08-14 · PR-D follow-up（evaluate read_paths）
+
+- **性质：** PR-D 独立验收 Important。不执行 T16；**不改 T15 已完成状态**（T15 实现 commit 仍为 `78b8beef5c7a9d044a7076d4c60905d3a8895090`）。
+- **Implementer：** `42996148-4bd4-451d-a34a-9164c3ed7d17`
+- **Spec reviewer：** `25b9ed06-824d-4d42-9f51-6c50c9fae2c9` → Spec ✅
+- **Quality reviewer：** `40d0e45b-96c4-4310-aa3c-615d5f5f9e77` → Approved。C/I=0。Minor：NeedApproval 对 classify_read 不可达；两处测试未正断言 Deny。
+- **Human edits：** none
+- **红灯：** `test_read_file_under_write_paths_only_is_not_allow` → `assert Allow != Allow`（`src/a.py` 被 write_paths 误放行）。
+- **绿灯：** 全量 **111 passed, 1 skipped**。
+- **Follow-up commit：** `d10f324e91eb7b7dca70a7ae1f5e63d0f56ea61e`
+
+
+
+
+
+
 
 
 
