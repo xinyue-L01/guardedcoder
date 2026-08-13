@@ -72,7 +72,14 @@ def _parse_diff(diff: str) -> list[_FilePatch]:
             rename_to = line[10:].replace("\\", "/")
             index += 1
             continue
-        if line.startswith(("diff --git ", "index ", "similarity ", "new file ", "deleted file ")):
+        if line.startswith("diff --git "):
+            if rename_from and rename_to:
+                files.append(_FilePatch(rename_from, rename_to, ()))
+                rename_from = None
+                rename_to = None
+            index += 1
+            continue
+        if line.startswith(("index ", "similarity ", "new file ", "deleted file ")):
             index += 1
             continue
         if line.startswith("--- "):
@@ -94,9 +101,16 @@ def _parse_diff(diff: str) -> list[_FilePatch]:
                     raise PatchError("malformed hunk")
                 index += 1
                 body: list[str] = []
-                while index < len(lines) and lines[index][:1] in {" ", "+", "-", "\\"}:
-                    body.append(lines[index])
-                    index += 1
+                while index < len(lines):
+                    raw = lines[index]
+                    if raw[:1] in {" ", "+", "-", "\\"}:
+                        body.append(raw)
+                        index += 1
+                    elif raw == "":
+                        body.append(" ")
+                        index += 1
+                    else:
+                        break
                 hunks.append(
                     _Hunk(
                         old_start=int(match.group(1)),
@@ -287,6 +301,9 @@ def apply_patch(
             planned[old_rel] = None
         elif renaming:
             assert old_rel is not None and new_rel is not None
+            dest = root / new_rel
+            if dest.exists() or dest.is_symlink():
+                raise PatchError("hunk does not apply")
             planned[new_rel] = new_bytes
             planned[old_rel] = None
         else:

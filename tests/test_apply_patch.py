@@ -51,6 +51,45 @@ def test_two_file_second_hunk_fail_changes_zero_files(tmp_path: Path) -> None:
     assert (tmp_path / "b.txt").read_bytes() == b"keep-b\n"
 
 
+def test_blank_line_inside_hunk_is_context_not_truncation(tmp_path: Path) -> None:
+    (tmp_path / "a.txt").write_bytes(b"old\n\nkeep\n")
+    diff = (
+        "--- a/a.txt\n"
+        "+++ b/a.txt\n"
+        "@@ -1,3 +1,3 @@\n"
+        "-old\n"
+        "+new\n"
+        "\n"
+        " keep\n"
+    )
+
+    apply_patch(tmp_path, diff)
+
+    assert (tmp_path / "a.txt").read_bytes() == b"new\n\nkeep\n"
+
+
+def test_pure_rename_survives_following_file_patch(tmp_path: Path) -> None:
+    (tmp_path / "old.txt").write_bytes(b"moved\n")
+    (tmp_path / "c.txt").write_bytes(b"old-c\n")
+    diff = (
+        "diff --git a/old.txt b/new.txt\n"
+        "rename from old.txt\n"
+        "rename to new.txt\n"
+        "diff --git a/c.txt b/c.txt\n"
+        "--- a/c.txt\n"
+        "+++ b/c.txt\n"
+        "@@ -1,1 +1,1 @@\n"
+        "-old-c\n"
+        "+new-c\n"
+    )
+
+    apply_patch(tmp_path, diff, allow_delete=True)
+
+    assert not (tmp_path / "old.txt").exists()
+    assert (tmp_path / "new.txt").read_bytes() == b"moved\n"
+    assert (tmp_path / "c.txt").read_bytes() == b"new-c\n"
+
+
 def test_create_does_not_overwrite_existing_file(tmp_path: Path) -> None:
     (tmp_path / "a.txt").write_bytes(b"keep\n")
     diff = "--- /dev/null\n+++ b/a.txt\n@@ -0,0 +1,1 @@\n+new\n"
