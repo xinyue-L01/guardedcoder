@@ -5,9 +5,9 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from guardedcoder.governance.classify import classify_write
+from guardedcoder.governance.classify import classify_read
 from guardedcoder.governance.hard_rules import ProfileKind, classify_profile
-from guardedcoder.models.actions import Action, RunCommandAction
+from guardedcoder.models.actions import Action, ListDirAction, ReadFileAction, RunCommandAction
 from guardedcoder.models.envelope import Envelope
 from guardedcoder.models.permit import RiskDecision
 from guardedcoder.models.task import TaskBudget
@@ -34,10 +34,9 @@ def evaluate(
     action: Action,
     budget: TaskBudget,
 ) -> Verdict:
-    path = getattr(action, "path", None)
     classification = None
-    if isinstance(path, str):
-        classification = classify_write(worktree, envelope, path)
+    if isinstance(action, (ReadFileAction, ListDirAction)):
+        classification = classify_read(worktree, envelope, action.path)
         if classification.decision == RiskDecision.Deny:
             return Verdict(kind=VerdictKind.Deny, code=classification.code)
 

@@ -1,7 +1,12 @@
 from pathlib import Path
 
 from guardedcoder.governance.evaluate import Verdict, VerdictKind, evaluate
-from guardedcoder.models.actions import FinishAction, ReadFileAction, RunCommandAction
+from guardedcoder.models.actions import (
+    FinishAction,
+    ListDirAction,
+    ReadFileAction,
+    RunCommandAction,
+)
 from guardedcoder.models.envelope import CommandProfile, Envelope
 from guardedcoder.models.task import TaskBudget
 
@@ -9,6 +14,7 @@ from guardedcoder.models.task import TaskBudget
 def _envelope(
     write_paths: tuple[str, ...] = ("src",),
     *profiles: CommandProfile,
+    read_paths: tuple[str, ...] = ("src",),
 ) -> Envelope:
     if not profiles:
         profiles = (
@@ -21,7 +27,7 @@ def _envelope(
             ),
         )
     return Envelope(
-        read_paths=("src",),
+        read_paths=read_paths,
         write_paths=write_paths,
         profiles=profiles,
         verify_profiles=tuple(p.profile_id for p in profiles),
@@ -35,6 +41,10 @@ def _envelope(
 
 def _read(path: str) -> ReadFileAction:
     return ReadFileAction(action="read_file", path=path)
+
+
+def _list(path: str) -> ListDirAction:
+    return ListDirAction(action="list_dir", path=path)
 
 
 def _run(profile_id: str) -> RunCommandAction:
@@ -145,7 +155,7 @@ def test_finish_with_remaining_steps_is_allow(tmp_path: Path) -> None:
     assert result.code is None
 
 
-def test_path_outside_write_paths_is_need_approval(tmp_path: Path) -> None:
+def test_read_outside_read_paths_is_deny_not_need_approval(tmp_path: Path) -> None:
     (tmp_path / "src").mkdir()
     docs = tmp_path / "docs"
     docs.mkdir()
@@ -156,5 +166,49 @@ def test_path_outside_write_paths_is_need_approval(tmp_path: Path) -> None:
         action=_read("docs/note.md"),
         budget=TaskBudget(remaining_steps=5),
     )
-    assert result.kind == VerdictKind.NeedApproval
+    assert result.kind == VerdictKind.Deny
+    assert result.kind != VerdictKind.NeedApproval
+    assert result.kind != VerdictKind.Allow
+
+
+def test_read_file_under_read_paths_is_allow(tmp_path: Path) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "a.md").write_text("x", encoding="utf-8")
+    (tmp_path / "src").mkdir()
+    result = evaluate(
+        worktree=tmp_path,
+        envelope=_envelope(write_paths=("src",), read_paths=("docs",)),
+        action=_read("docs/a.md"),
+        budget=TaskBudget(remaining_steps=5),
+    )
+    assert result.kind == VerdictKind.Allow
     assert result.code is None
+
+
+def test_read_file_under_write_paths_only_is_not_allow(tmp_path: Path) -> None:
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "a.py").write_text("print(1)\n", encoding="utf-8")
+    (tmp_path / "docs").mkdir()
+    result = evaluate(
+        worktree=tmp_path,
+        envelope=_envelope(write_paths=("src",), read_paths=("docs",)),
+        action=_read("src/a.py"),
+        budget=TaskBudget(remaining_steps=5),
+    )
+    assert result.kind != VerdictKind.Allow
+    assert result.kind != VerdictKind.NeedApproval
+
+
+def test_list_dir_under_write_paths_only_is_not_allow(tmp_path: Path) -> None:
+    (tmp_path / "src").mkdir()
+    (tmp_path / "docs").mkdir()
+    result = evaluate(
+        worktree=tmp_path,
+        envelope=_envelope(write_paths=("src",), read_paths=("docs",)),
+        action=_list("src"),
+        budget=TaskBudget(remaining_steps=5),
+    )
+    assert result.kind != VerdictKind.Allow
+    assert result.kind != VerdictKind.NeedApproval

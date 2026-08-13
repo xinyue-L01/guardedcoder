@@ -1,13 +1,16 @@
 from pathlib import Path
 
-from guardedcoder.governance.classify import classify_write
+from guardedcoder.governance.classify import classify_read, classify_write
 from guardedcoder.models.envelope import CommandProfile, Envelope
 from guardedcoder.models.permit import Classification, RiskDecision
 
 
-def _envelope(write_paths: tuple[str, ...] = ("src",)) -> Envelope:
+def _envelope(
+    write_paths: tuple[str, ...] = ("src",),
+    read_paths: tuple[str, ...] = ("src",),
+) -> Envelope:
     return Envelope(
-        read_paths=("src",),
+        read_paths=read_paths,
         write_paths=write_paths,
         profiles=(
             CommandProfile(
@@ -82,6 +85,37 @@ def test_write_path_prefix_does_not_match_sibling(tmp_path: Path) -> None:
     result = classify_write(tmp_path, _envelope(("src",)), "src2/foo.py")
     assert result.decision == RiskDecision.NeedApproval
     assert result.code is None
+
+
+def test_classify_read_under_read_paths_is_allow(tmp_path: Path) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "a.md").write_text("x", encoding="utf-8")
+    (tmp_path / "src").mkdir()
+    result = classify_read(
+        tmp_path, _envelope(write_paths=("src",), read_paths=("docs",)), "docs/a.md"
+    )
+    assert result.decision == RiskDecision.Allow
+    assert result.code is None
+
+
+def test_classify_read_under_write_paths_only_is_deny(tmp_path: Path) -> None:
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "a.py").write_text("print(1)\n", encoding="utf-8")
+    (tmp_path / "docs").mkdir()
+    result = classify_read(
+        tmp_path, _envelope(write_paths=("src",), read_paths=("docs",)), "src/a.py"
+    )
+    assert result.decision == RiskDecision.Deny
+    assert result.decision != RiskDecision.Allow
+    assert result.decision != RiskDecision.NeedApproval
+
+
+def test_classify_read_workspace_escape_keeps_fence_code(tmp_path: Path) -> None:
+    result = classify_read(tmp_path, _envelope(read_paths=("docs",)), "../secret")
+    assert result.decision == RiskDecision.Deny
+    assert result.code == "WORKSPACE_ESCAPE"
 
 
 def test_classification_is_frozen() -> None:
