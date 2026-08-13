@@ -54,7 +54,7 @@ Human edits: <none|简述>
 |---|---|---|---|---|
 | G0 | 冷启动（仓库外试做 T01+T02） | passed | — | G0 已签署；disposable 未进正式仓 |
 | G1 | Git / GitHub / AGENT_LOG 基线 | done | 53075f05fc5097655d7f5b2f1113b2fbc884da4c | 正式仓 main；无 origin |
-| T01 | 工程骨架 + pip-tools | pending | — | WT-A / PR-A |
+| T01 | 工程骨架 + pip-tools | done | 0421cc9463e304c1dadfd293aaab253108f8a4d5 | WT-A `.worktrees/wt-a-foundation` / PR-A |
 | T02 | 状态枚举 | pending | — | WT-A / PR-A |
 | T03 | 动作 schema | pending | — | WT-A / PR-A |
 | T04 | 信封模型 | pending | — | WT-A / PR-A |
@@ -295,6 +295,17 @@ Status: done | Commit: 53075f05fc5097655d7f5b2f1113b2fbc884da4c
 ---
 
 ## Task 01: 工程骨架 + pip-tools + setuptools
+
+**状态：** done · 实现 commit `0421cc9463e304c1dadfd293aaab253108f8a4d5`
+
+- [x] 写失败测试
+- [x] 跑红灯命令，记录预期失败
+- [x] 最小实现
+- [x] 跑绿灯命令
+- [x] 重构并回归测试
+- [x] spec 合规审查（Critical 必修）
+- [x] 代码质量审查（Critical 必修）
+- [x] commit（含 Subagent / Human edits）+ 追加 `AGENT_LOG.md` + 更新本 PLAN 状态栏
 
 **目标：** 可编辑安装；权威测试命令 `python -m pytest`；带 hash 的锁文件。不把私有/系统镜像 URL 写入提交的锁文件。  
 **依赖：** G1 签字完成。  

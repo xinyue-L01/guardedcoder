@@ -19,3 +19,19 @@
 - **自查：** 正式仓无 pyproject、src 业务代码、测试、锁文件；未从 disposable 复制实现。
 - **G1 审查修正：** Codex 审查发现 `.cursor/` 当时未跟踪，因此原先“工作区干净”的声明不准确。已将 `.cursor/` 加入 `.gitignore`，不提交本地 Cursor 设置。
 
+---
+
+## 2026-08-14 · T01 工程骨架 + pip-tools
+
+- **Task：** T01（WT-A / `feat/a-foundation` / `.worktrees/wt-a-foundation`）。未执行 T02。未复制 G0 disposable 代码。
+- **Implementer：** Cursor generalPurpose subagent `2974ac89-4f8c-4c5a-9c09-89b3fc73bc15`
+- **Spec reviewer：** Cursor generalPurpose subagent `2c93cff4-c00c-4798-8881-7776f0c743fb` → Spec compliant，Approved；无 Critical/Important。Minor：`[project.optional-dependencies].dev` 为 brief 未要求的多余项（保留）。
+- **Quality reviewer：** Cursor generalPurpose subagent `a6ebe889-2291-4bb8-ad0e-84bff8b709bb` → Task quality Approved。Important：Windows 上 compile 的 hashed lock 含 `pywin32-ctypes`、无 Linux keyring 后端 marker。Controller 裁决：PLAN 锁文件命令固定且不含 `--universal`，不改命令。Minor：版本双处手写、dev extra 与 `.in` 重复。
+- **Controller：** Cursor Agent + Superpowers（using-git-worktrees、subagent-driven-development、TDD）。
+- **Human edits：** none（实现源码未经人工改写）。
+- **红灯：** 仅有 `tests/test_pkg_import.py` 时 `.venv\Scripts\python.exe -m pytest tests/test_pkg_import.py -v` → collection ERROR，`ModuleNotFoundError: No module named 'guardedcoder'`（预期）。
+- **绿灯：** 同一命令 `tests/test_pkg_import.py::test_package_version PASSED`；`python -m pytest` → **1 passed**。
+- **回归：** commit 前再次 `python -m pytest tests/test_pkg_import.py -v` → **1 passed**。
+- **锁文件：** `python -m piptools compile --generate-hashes --allow-unsafe --index-url https://pypi.org/simple` 分别编译 `requirements.in` / `requirements-dev.in`；lock 仅含 `https://pypi.org/simple`，含 sha256 hash，非 `pip freeze`。
+- **实现 commit：** `0421cc9463e304c1dadfd293aaab253108f8a4d5`（`feat: add setuptools project skeleton`）。
+
