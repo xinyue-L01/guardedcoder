@@ -23,7 +23,11 @@ class PermitConsumedError(Exception):
 
 
 class PermitInvalidError(Exception):
-    """Raised when a permit's envelope_hash does not match the current task."""
+    """Raised when a permit's envelope, revision, or pending binding is invalid."""
+
+
+class ExecutionWindowOpenError(Exception):
+    """Raised when a task already has an active execution window."""
 
 
 class ApprovalError(Exception):

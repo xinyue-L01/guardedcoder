@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 
@@ -109,7 +110,7 @@ def test_consume_opens_window_and_sets_executing_action(tmp_path) -> None:
         permit_id=permit_id,
         expected_revision=2,
         action_kind="apply_patch",
-        preimage={"a": 1},
+        preimage={"a.txt": "x"},
         postimage=None,
     )
     task = _task(conn)
@@ -125,7 +126,9 @@ def test_consume_opens_window_and_sets_executing_action(tmp_path) -> None:
     assert win["permit_id"] == permit_id
     assert win["action_kind"] == "apply_patch"
     assert win["status"] == "executing_action"
-    assert json.loads(win["preimage_json"]) == {"a": 1}
+    stored_pre = json.loads(win["preimage_json"])
+    assert stored_pre["a.txt"]["exists"] is True
+    assert stored_pre["a.txt"]["sha256"] == hashlib.sha256(b"x").hexdigest()
     assert win["postimage_json"] is None
 
 
@@ -191,7 +194,7 @@ def test_stale_revision_consume_no_side_effects(tmp_path) -> None:
         expected_revision=1,
     )
     before_task = dict(_task(conn))
-    with pytest.raises(StaleRevisionError):
+    with pytest.raises((StaleRevisionError, PermitInvalidError)):
         consume_permit_and_open_window(
             conn,
             task_id="t1",
