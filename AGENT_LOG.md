@@ -112,6 +112,19 @@
 - **绿灯：** `tests/test_envelope.py` 5 passed；全量 **15 passed**。钉死 digest `06694b4f73d148902ba8baa28be3110ed98a3b32a8ef22761b707a9829ba6f45`。
 - **Follow-up commit：** `692abb57e5c6282f9fddca7dffe3c48b3832500a`
 
+---
+
+## 2026-08-14 · T10 MockLLM（WT-C）
+
+- **Implementer：** `5019ad99-f365-46ff-a182-10f79ff1842a`
+- **Spec reviewer：** `1e45a676-fc6e-4b1a-86b6-47199fe8d2b6` → Approved
+- **Quality reviewer：** `62e14274-592f-4195-9131-dbe5a6b749fc` → Approved
+- **Human edits：** none
+- **红灯：** 见 task-10-report（import 失败）
+- **绿灯：** 全量 **19 passed**
+- **实现 commit：** `1fbba589d6e4a919756cd8e7765c3bb14cdddf0e`
+
+
 
 
 

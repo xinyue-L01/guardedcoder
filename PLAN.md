@@ -63,7 +63,7 @@ Human edits: <none|简述>
 | T07 | TOML 校验 | pending | — | WT-B / PR-B |
 | T08 | 信封合成 | pending | — | WT-B / PR-B |
 | T09 | 配置不能放宽硬规则 | pending | — | WT-B / PR-B |
-| T10 | MockLLM | pending | — | WT-C / PR-C |
+| T10 | MockLLM | done | 1fbba589d6e4a919756cd8e7765c3bb14cdddf0e | WT-C / PR-C |
 | T11 | OpenAICompatibleLLM | pending | — | WT-C / PR-C |
 | T12 | 路径围栏 | pending | — | WT-D / PR-D |
 | T13 | 硬规则与 profile 分码 | pending | — | WT-D / PR-D |
