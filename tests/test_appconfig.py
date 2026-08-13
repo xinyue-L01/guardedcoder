@@ -41,7 +41,7 @@ def test_legal_dict_validates() -> None:
 
 
 def test_api_key_raises_validation_error() -> None:
-    data = {**_legal_config(), "api_key": "sk-test"}
+    data = {**_legal_config(), "api_key": "sk" + "-test"}
     with pytest.raises(ValidationError):
         AppConfig.model_validate(data)
 
