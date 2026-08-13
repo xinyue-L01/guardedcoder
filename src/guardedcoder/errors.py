@@ -16,3 +16,7 @@ class RemoteKeyHttpError(Exception):
 
 class StaleRevisionError(Exception):
     """Raised when a task update does not match the expected state_revision."""
+
+
+class PermitConsumedError(Exception):
+    """Raised when a one-shot ExecutionPermit is consumed more than once."""

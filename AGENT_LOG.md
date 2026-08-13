@@ -268,6 +268,19 @@
 - **Human edits：** none
 - **红灯：** collection `ImportError`（缺 persist 模块 / `StaleRevisionError`）
 - **绿灯：** `test_db` 7 + `test_audit` 1；全量 **119 passed, 1 skipped**
+- **实现 commit：** `3006440dc5989058a3609aeb08aaf101553e134c`
+
+---
+
+## 2026-08-14 · T17 M8 创建并消费 permit（WT-E）
+
+- **Task：** T17（WT-E / `feat/e-persist`）。未执行 T18。未合并 PR-E。
+- **Implementer：** `015c6a89-3990-47a8-b567-f0b188f1a629`
+- **Spec reviewer：** `0b084675-65e2-44eb-8f13-77fc63971073` → C/I=0
+- **Quality reviewer：** `2e249fa2-0541-4c66-b944-eaa2e3797ad1` → C/I=0。Minor：缺 task 误报 StaleRevision；缺 permit 用 LookupError。
+- **Human edits：** none
+- **红灯：** 缺 `persist.permit` / `PermitConsumedError`
+- **绿灯：** `test_permit` 8 passed；全量 **127 passed, 1 skipped**
 - **实现 commit：** TBD
 
 
