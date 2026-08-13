@@ -73,5 +73,20 @@
 - **绿灯：** 初版 4 passed / 全量 7 passed；修复后 `test_actions` 5 passed，全量 **8 passed**。
 - **实现 commit：** `f33e675658b20450502c287e7310d224049a933f`；收紧 `92a671f0c9afed19fe714a708fcf24e3af6d27fb`
 
+---
+
+## 2026-08-14 · T04 Envelope / CommandProfile
+
+- **Task：** T04（WT-A / `feat/a-foundation`）。未执行 T05。
+- **Implementer：** `b76982f7-378e-4a3e-a564-b03fc099a59d`
+- **Fixer：** `c761c9e9-49d1-4730-95c1-519a9720683d`（argv_template 存为不可变 tuple，构造仍接受 list）
+- **Spec reviewer：** `7cf2002f-f125-4b66-ac0c-af8e3fe640fb` → Spec compliant，Approved。
+- **Quality reviewer：** 初审 `dcbc183c-7e2a-4a40-a78a-b153e8b7644b` Needs fixes（Important：可变 list）；复审 `45c11dca-5831-4ea6-94e6-165e166981ab` Approved。Minor：hash 默认空串覆盖、测试未钉死 SHA256 字节。
+- **Human edits：** none
+- **红灯：** 仅测试时 `ModuleNotFoundError: No module named 'guardedcoder.models.envelope'`。
+- **绿灯：** 初版 2 passed / 全量 10 passed；修复后 envelope 3 passed，全量 **11 passed**。
+- **实现 commit：** `0118410aae2f38bfdb361a2040762fb6cbdd7781`；冻结 `95d11d261233ee05336019567480f6e2a8044d68`
+
+
 
 
