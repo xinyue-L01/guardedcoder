@@ -38,6 +38,7 @@ credentials.json
 .secrets/
 
 # Editor / OS junk
+.cursor/
 *~
 *.swp
 *.swo
