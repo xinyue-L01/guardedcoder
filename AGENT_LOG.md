@@ -317,6 +317,19 @@
 - **Human edits：** none
 - **红灯：** 缺 `persist.approval` / `ApprovalError`
 - **绿灯：** `test_approval` 5；全量 **141 passed, 1 skipped**
-- **实现 commit：** TBD
+- **实现 commit：** `a15bd72e41c6dd681e79553088267f3aafb62f43`
+
+---
+
+## 2026-08-14 · PR-E follow-up（permit 绑定 envelope）
+
+- **性质：** branch-level Important。不执行 T21；**不改 T17 已完成状态**（T17 实现 commit 仍为 `3eaed9d70322e1f8930eee7fc303f61915573d72`）。
+- **Implementer：** `87f49a9b-1a12-43c7-a87e-1a0b427e9982`
+- **Re-review：** `e6a43fb6-b91a-4fc7-a756-1389962026e8` → C/I=0
+- **Human edits：** none
+- **红灯：** 改信封后仍能 consume 旧 permit
+- **绿灯：** 全量 **143 passed, 1 skipped**
+- **Follow-up commit：** TBD
+
 
 

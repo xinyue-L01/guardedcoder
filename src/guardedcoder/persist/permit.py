@@ -5,7 +5,7 @@ import sqlite3
 import uuid
 from typing import Any
 
-from guardedcoder.errors import PermitConsumedError, StaleRevisionError
+from guardedcoder.errors import PermitConsumedError, PermitInvalidError, StaleRevisionError
 
 
 def create_permit(
@@ -25,17 +25,23 @@ def create_permit(
         cur = conn.execute(
             "UPDATE tasks SET remaining_steps = remaining_steps - 1, "
             "state_revision = state_revision + 1 "
-            "WHERE task_id = ? AND state_revision = ? AND remaining_steps > 0",
-            (task_id, expected_revision),
+            "WHERE task_id = ? AND state_revision = ? AND remaining_steps > 0 "
+            "AND envelope_hash = ?",
+            (task_id, expected_revision, envelope_hash),
         )
         if cur.rowcount == 0:
             row = conn.execute(
-                "SELECT state_revision, remaining_steps FROM tasks WHERE task_id = ?",
+                "SELECT state_revision, remaining_steps, envelope_hash "
+                "FROM tasks WHERE task_id = ?",
                 (task_id,),
             ).fetchone()
             if row is None or row[0] != expected_revision:
                 raise StaleRevisionError(
                     f"stale revision for task {task_id}: expected {expected_revision}"
+                )
+            if row[2] != envelope_hash:
+                raise PermitInvalidError(
+                    f"envelope_hash mismatch for task {task_id}"
                 )
             raise ValueError(f"budget exhausted for task {task_id}")
         new_revision = expected_revision + 1
@@ -79,13 +85,22 @@ def consume_permit_and_open_window(
     conn.execute("SAVEPOINT sp_consume_permit")
     try:
         permit = conn.execute(
-            "SELECT consumed FROM permits WHERE permit_id = ? AND task_id = ?",
+            "SELECT consumed, envelope_hash FROM permits "
+            "WHERE permit_id = ? AND task_id = ?",
             (permit_id, task_id),
         ).fetchone()
         if permit is None:
             raise LookupError(f"permit {permit_id} not found for task {task_id}")
         if permit[0]:
             raise PermitConsumedError(f"permit {permit_id} already consumed")
+        task = conn.execute(
+            "SELECT envelope_hash FROM tasks WHERE task_id = ?",
+            (task_id,),
+        ).fetchone()
+        if task is None or task[0] != permit[1]:
+            raise PermitInvalidError(
+                f"envelope_hash mismatch for permit {permit_id}"
+            )
         cur = conn.execute(
             "UPDATE tasks SET run_state = ?, state_revision = state_revision + 1 "
             "WHERE task_id = ? AND state_revision = ?",

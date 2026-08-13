@@ -5,10 +5,10 @@ import sqlite3
 
 import pytest
 
-from guardedcoder.errors import PermitConsumedError, StaleRevisionError
+from guardedcoder.errors import PermitConsumedError, PermitInvalidError, StaleRevisionError
 from guardedcoder.persist.db import connect
 from guardedcoder.persist.permit import consume_permit_and_open_window, create_permit
-from guardedcoder.persist.store import create_task
+from guardedcoder.persist.store import create_task, update_task
 
 
 class SpyExecutor:
@@ -230,6 +230,53 @@ def test_second_unconsumed_permit_integrity_error(tmp_path) -> None:
         )
     assert _task(conn)["remaining_steps"] == remaining
     assert conn.execute("SELECT COUNT(*) FROM permits").fetchone()[0] == 1
+
+
+def test_create_permit_rejects_mismatched_envelope_hash(tmp_path) -> None:
+    conn = connect(tmp_path / "g.db")
+    _create(conn)
+    before = dict(_task(conn))
+    with pytest.raises(PermitInvalidError):
+        create_permit(
+            conn,
+            task_id="t1",
+            action_id="a1",
+            fingerprint="fp1",
+            envelope_hash="env-other",
+            expected_revision=1,
+        )
+    assert dict(_task(conn)) == before
+    assert conn.execute("SELECT COUNT(*) FROM permits").fetchone()[0] == 0
+
+
+def test_consume_fails_after_envelope_hash_update(tmp_path) -> None:
+    conn = connect(tmp_path / "g.db")
+    _create(conn)
+    permit_id = create_permit(
+        conn,
+        task_id="t1",
+        action_id="a1",
+        fingerprint="fp1",
+        envelope_hash="env-1",
+        expected_revision=1,
+    )
+    update_task(conn, "t1", 2, envelope_hash="env-2")
+    new_revision = _task(conn)["state_revision"]
+    with pytest.raises(PermitInvalidError):
+        consume_permit_and_open_window(
+            conn,
+            task_id="t1",
+            permit_id=permit_id,
+            expected_revision=new_revision,
+            action_kind="run_command",
+        )
+    task = _task(conn)
+    assert task["run_state"] != "executing_action"
+    consumed = conn.execute(
+        "SELECT consumed FROM permits WHERE permit_id = ?", (permit_id,)
+    ).fetchone()[0]
+    assert consumed == 0
+    assert conn.execute("SELECT COUNT(*) FROM execution_windows").fetchone()[0] == 0
 
 
 def test_create_permit_fails_when_budget_exhausted(tmp_path) -> None:

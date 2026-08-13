@@ -22,6 +22,10 @@ class PermitConsumedError(Exception):
     """Raised when a one-shot ExecutionPermit is consumed more than once."""
 
 
+class PermitInvalidError(Exception):
+    """Raised when a permit's envelope_hash does not match the current task."""
+
+
 class ApprovalError(Exception):
     """Raised when approve fingerprint or bound revision does not match."""
 
