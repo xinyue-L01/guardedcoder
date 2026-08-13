@@ -11,7 +11,7 @@ _MAX_RAW_LEN = 1_000_000
 
 
 class _StrictAction(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
 
 
 class ListDirAction(_StrictAction):

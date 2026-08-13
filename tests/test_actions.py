@@ -20,6 +20,13 @@ def test_extra_field_raises() -> None:
         parse_llm_response('{"action":"list_dir","path":".","extra":true}')
 
 
-def test_oversized_json_raises() -> None:
+def test_non_string_path_raises() -> None:
     with pytest.raises(ActionParseError):
-        parse_llm_response("x" * 1_000_001)
+        parse_llm_response('{"action":"list_dir","path":1}')
+
+
+def test_oversized_json_raises() -> None:
+    raw = '{"action":"list_dir","path":"' + ("a" * 1_000_000) + '"}'
+    assert len(raw) > 1_000_000
+    with pytest.raises(ActionParseError):
+        parse_llm_response(raw)
