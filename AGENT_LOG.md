@@ -604,3 +604,20 @@
 - **全量：** **358 passed, 4 skipped**。secret scan clean 119 files。
 - **实现 commit：** `c8d4b53cb79e028a2f121d5dba2dee3133b57235`
 - **Minor 未修：** truncated + exit 0 仍 PASS（`output_truncated` 承载）；verify plan 测试只查 `run_profile`；非数字 JUnit 属性走 ERROR。
+
+---
+
+## 2026-08-14 · T28 主循环单步（WT-H）
+
+- **Task：** T28 主循环单步（正确 permit 序）。未执行 T29。未合并 PR-H。
+- **Implementer：** `e02228ec`（feat `ce647bf`）；fixer `29380cf2`（`37aaf31`）。
+- **Spec reviewer：** 初审 `cc165c45` C=1 I=2（预览在 create_permit 之后留下孤儿 permit；恢复未绑 fingerprint；`recorded_success` 当窗口仍开）；复审 `2ec0ec77` C=0 I=0。
+- **Quality reviewer：** 初审 `f5cd1653` C=1 I=6（指纹洞、consume 时未钉 pre、HITL monkeypatch、claim stub、私有 apply_patch、recorded_*、未 started 窗口卡死）；复审 `26739dfc` C=0 I=0。
+- **裁决：** Quality I2（`evaluate` 未接 `classify_write`）属 T15，T28 不改 evaluate。
+- **Human edits：** none。
+- **红灯：** 初实现 collection ImportError（无 `guardedcoder.loop`）；fix 轮 `tests/test_loop_step.py` 7 failed / 10 passed（`.superpowers/sdd/t28-fix-red.txt`）。
+- **绿灯：** `tests/test_loop_step.py` **17 passed**。
+- **全量：** **375 passed, 4 skipped**。
+- **实现 commit：** `ce647bfcf5637a69e184d7a5ca2579933ea78dd0`
+- **修复 commit：** `37aaf316711f30b482b282c078561347feca2f8a`
+- **Minor 未修：** HITL 仍靠 monkeypatch `evaluate`；`NeedEnvelopeRevision` 无单测；loop 层 SQL 关窗；`recover()` 改 `conn.row_factory`；fail-close 后预算已扣。
