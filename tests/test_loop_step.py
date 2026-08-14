@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -15,12 +16,13 @@ from guardedcoder.llm.mock import MockLLM
 from guardedcoder.loop import engine as engine_mod
 from guardedcoder.loop.context import build_context
 from guardedcoder.loop.engine import step
-from guardedcoder.models.actions import Action, ApplyPatchAction, ListDirAction
+from guardedcoder.models.actions import Action, ApplyPatchAction, ListDirAction, RunCommandAction
 from guardedcoder.models.envelope import CommandProfile, Envelope
 from guardedcoder.models.task import TaskBudget
 from guardedcoder.persist.claim import claim_recovered_attempt
 from guardedcoder.persist.db import connect
 from guardedcoder.persist.permit import consume_permit_and_open_window, create_permit
+from guardedcoder.persist.recover import RecoverDecision
 from guardedcoder.persist.store import create_task
 
 
@@ -769,3 +771,96 @@ def test_engine_uses_public_preview_not_privates() -> None:
         "_mark_bytes",
     ):
         assert name not in source
+
+
+def test_started_run_command_window_step_recovers_error_without_execute(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    marker = ws / "marker.txt"
+    envelope = Envelope(
+        read_paths=(".",),
+        write_paths=(".",),
+        profiles=(
+            CommandProfile(
+                profile_id="write_marker",
+                argv_template=(
+                    sys.executable,
+                    "-c",
+                    "open('marker.txt','w',encoding='utf-8').write('ran')",
+                ),
+                cwd=".",
+                timeout_seconds=30,
+                max_output_bytes=4096,
+            ),
+        ),
+        verify_profiles=(),
+        max_steps=10,
+        max_total_seconds=300,
+        allow_delete=False,
+        allow_network=False,
+        config_digest="abc",
+    )
+    conn = connect(tmp_path / "g.db")
+    _boot(conn, ws, envelope)
+    action = RunCommandAction(action="run_command", profile_id="write_marker")
+    permit_id = create_permit(
+        conn,
+        task_id="t1",
+        action_id="a1",
+        fingerprint=_fp_for(conn, envelope, action),
+        envelope_hash=envelope.envelope_hash,
+        expected_revision=_task(conn)["state_revision"],
+    )
+    window_id = consume_permit_and_open_window(
+        conn,
+        task_id="t1",
+        permit_id=permit_id,
+        expected_revision=_task(conn)["state_revision"],
+        action_kind="run_command",
+    )
+    conn.execute(
+        "UPDATE execution_windows SET execution_started = 1 WHERE window_id = ?",
+        (window_id,),
+    )
+    executed: list[object] = []
+    recovered: list[object] = []
+    real_recover = engine_mod.recover
+
+    def spy_execute(*args: object, **kwargs: object):
+        executed.append(kwargs)
+        raise AssertionError("execute must not run on started run_command recover")
+
+    def spy_recover(*args: object, **kwargs: object) -> RecoverDecision:
+        decision = real_recover(*args, **kwargs)
+        recovered.append(decision)
+        return decision
+
+    monkeypatch.setattr(engine_mod, "execute", spy_execute)
+    monkeypatch.setattr(engine_mod, "recover", spy_recover)
+    llm = MockLLM(
+        responses=['{"action":"run_command","profile_id":"write_marker"}']
+    )
+
+    result = step(
+        conn,
+        task_id="t1",
+        envelope=envelope,
+        llm=llm,
+        worktree=ws,
+        task_description="resume command",
+        task_dir=tmp_path / "task",
+    )
+
+    assert executed == []
+    assert recovered == [RecoverDecision.recorded_error]
+    assert result.run_state == "error"
+    assert _task(conn)["run_state"] == "error"
+    assert marker.exists() is False
+    win = conn.execute(
+        "SELECT status FROM execution_windows WHERE window_id = ?",
+        (window_id,),
+    ).fetchone()
+    assert win is not None
+    assert win[0] == "error"

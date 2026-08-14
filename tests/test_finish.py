@@ -10,12 +10,14 @@ from types import SimpleNamespace
 
 import pytest
 
+from guardedcoder.governance.evaluate import Verdict, VerdictKind
 from guardedcoder.llm.mock import MockLLM
 from guardedcoder.loop import engine as engine_mod
 from guardedcoder.loop.engine import step
 from guardedcoder.models.actions import FinishAction, RunCommandAction
 from guardedcoder.models.envelope import CommandProfile, Envelope
 from guardedcoder.persist.db import connect
+from guardedcoder.persist.permit import consume_permit_and_open_window, create_permit
 from guardedcoder.persist.store import create_task
 from guardedcoder.workspace.artifact import PatchArtifact
 
@@ -421,3 +423,110 @@ def test_verify_execute_failure_fail_closes_window_to_error(
     row = conn.execute("SELECT status FROM execution_windows").fetchone()
     assert row is not None
     assert row[0] == "error"
+
+
+def test_finish_success_after_hitl_stays_awaiting_approval_no_permit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    envelope = _envelope(_profile("unit", 0))
+    conn = connect(tmp_path / "g.db")
+    _boot(conn, ws, envelope)
+    created: list[object] = []
+    real_create = engine_mod.create_permit
+    real_evaluate = engine_mod.evaluate
+    calls = {"n": 0}
+
+    def spy_create(*args: object, **kwargs: object) -> str:
+        created.append(kwargs)
+        return real_create(*args, **kwargs)
+
+    def hitl_once(*args: object, **kwargs: object) -> Verdict:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return Verdict(kind=VerdictKind.NeedApproval, code=None)
+        return real_evaluate(*args, **kwargs)
+
+    monkeypatch.setattr(engine_mod, "create_permit", spy_create)
+    monkeypatch.setattr(engine_mod, "evaluate", hitl_once)
+    step(
+        conn,
+        task_id="t1",
+        envelope=envelope,
+        llm=MockLLM(responses=['{"action":"list_dir","path":"."}']),
+        worktree=ws,
+        task_description="needs hitl",
+        task_dir=tmp_path / "task",
+        patch_port=InjectedPort(),
+    )
+    assert _task(conn)["run_state"] == "awaiting_approval"
+    pending = conn.execute("SELECT consumed FROM pending_actions").fetchone()
+    assert pending is not None
+    assert int(pending[0]) == 0
+
+    result = step(
+        conn,
+        task_id="t1",
+        envelope=envelope,
+        llm=MockLLM(responses=['{"action":"finish","outcome":"success"}']),
+        worktree=ws,
+        task_description="done",
+        task_dir=tmp_path / "task",
+        patch_port=InjectedPort(),
+    )
+
+    assert result.run_state == "awaiting_approval"
+    assert _task(conn)["run_state"] == "awaiting_approval"
+    assert result.run_state not in {"verifying", "succeeded", "unverified"}
+    assert _task(conn)["run_state"] not in {"verifying", "succeeded", "unverified"}
+    pending_after = conn.execute("SELECT consumed FROM pending_actions").fetchone()
+    assert pending_after is not None
+    assert int(pending_after[0]) == 0
+    assert created == []
+    assert conn.execute("SELECT COUNT(*) FROM permits").fetchone()[0] == 0
+
+
+def test_finish_success_with_open_window_does_not_unverified(tmp_path: Path) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    envelope = _envelope(verify=())
+    conn = connect(tmp_path / "g.db")
+    _boot(conn, ws, envelope)
+    permit_id = create_permit(
+        conn,
+        task_id="t1",
+        action_id="a1",
+        fingerprint="fp1",
+        envelope_hash=envelope.envelope_hash,
+        expected_revision=_task(conn)["state_revision"],
+    )
+    window_id = consume_permit_and_open_window(
+        conn,
+        task_id="t1",
+        permit_id=permit_id,
+        expected_revision=_task(conn)["state_revision"],
+        action_kind="run_command",
+    )
+
+    result = step(
+        conn,
+        task_id="t1",
+        envelope=envelope,
+        llm=MockLLM(responses=['{"action":"finish","outcome":"success"}']),
+        worktree=ws,
+        task_description="done",
+        task_dir=tmp_path / "task",
+        patch_port=InjectedPort(),
+    )
+
+    assert result.run_state != "unverified"
+    assert _task(conn)["run_state"] != "unverified"
+    assert result.run_state != "succeeded"
+    assert _task(conn)["run_state"] != "succeeded"
+    win = conn.execute(
+        "SELECT status FROM execution_windows WHERE window_id = ?",
+        (window_id,),
+    ).fetchone()
+    assert win is not None
+    assert win[0] == "executing_action"

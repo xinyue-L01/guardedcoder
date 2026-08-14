@@ -358,6 +358,11 @@ def _finish(
     task_dir: Path | None,
     patch_port: PatchArtifactPort | None,
 ) -> StepResult:
+    task = _task_row(conn, task_id)
+    if task["run_state"] != "running" or _active_window(conn, task_id) is not None:
+        return StepResult(
+            action=action, observation=None, run_state=task["run_state"]
+        )
     if action.outcome == "failed":
         _set_task_state(conn, task_id, run_state="failed")
         return StepResult(action=action, observation=None, run_state="failed")
@@ -560,6 +565,24 @@ def step(
             observation=observation,
             run_state=_task_row(conn, task_id)["run_state"],
         )
+    if (
+        window is not None
+        and window["execution_started"]
+        and window["action_kind"] != "apply_patch"
+    ):
+        task = _task_row(conn, task_id)
+        decision = recover(
+            conn,
+            task_id=task_id,
+            workspace=worktree,
+            expected_revision=task["state_revision"],
+        )
+        if decision == RecoverDecision.recorded_error:
+            return StepResult(
+                action=action,
+                observation=None,
+                run_state=_task_row(conn, task_id)["run_state"],
+            )
     if window is not None:
         raise ExecutionWindowOpenError(
             f"task {task_id} already has an active execution window"
