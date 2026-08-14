@@ -787,4 +787,8 @@
 - **Release：** https://github.com/xinyue-L01/guardedcoder/releases/tag/v0.1.0
 - **Actions：** https://github.com/xinyue-L01/guardedcoder/actions/runs/31790101161 success
 - **资产：** `guardedcoder-0.1.0-py3-none-any.whl` 与同名 `.sha256`
-- **未代写** REFLECTION.md。**未填** submission.jsonc 学号/姓名。
+- **SHA-256：** 下载后本地 `Get-FileHash` 与 sidecar 均为 `f3ac07b18b8115f15e6f45335c156ade9bfd0d10365c64c55c0717ae1f98a7d9`（一致）。只证明文件与发布声明一致。
+- **pipx：** `python -m pipx install <Release wheel URL>` → `guardedcoder 0.1.0`。`guardedcoder --help` 列出 `run,approve,reject,resume,apply,discard,auth,config,memory`。`config --help` 列出 `init,validate,show`。`auth status` 无配置时非 0：`cannot read config ...\guardedcoder\config.toml`；无明文 Key。
+- **机制演示：** `python demos\mechanism_demo.py` 连续两次 exit 0，输出字节级一致。四场景：护栏拒绝 / FAIL 门控 / 指纹·permit·窗口 / 非法 TOML。无 Key、无网络。
+- **REFLECTION.md：** 仅提交提纲占位，正文由学生本人补写（1500–2500 字）。AI 未代写。
+- **submission.jsonc：** 仅在桌面提交目录填写 `repo_url` 与 `deploy_release_url`；学号/姓名留待本人填写。未加入 Git、未放入源码 zip。
