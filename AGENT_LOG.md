@@ -621,3 +621,19 @@
 - **实现 commit：** `ce647bfcf5637a69e184d7a5ca2579933ea78dd0`
 - **修复 commit：** `37aaf316711f30b482b282c078561347feca2f8a`
 - **Minor 未修：** HITL 仍靠 monkeypatch `evaluate`；`NeedEnvelopeRevision` 无单测；loop 层 SQL 关窗；`recover()` 改 `conn.row_factory`；fail-close 后预算已扣。
+
+---
+
+## 2026-08-14 · T29 finish 门闩（WT-H）
+
+- **Task：** T29 finish 门闩 + PatchArtifactPort。未执行 T30。未合并 PR-H。
+- **Implementer：** `f9a22875`（feat `8466457`；fix `f8b011f`）。
+- **Spec reviewer：** 初审 `52e34429` C=0 I=2（未知 outcome 走 success 门闩；未声明/未知 sensor 默认 exit_code）；复审 `c8678eb2` C=0 I=0。
+- **Quality reviewer：** 初审 `9a871a4c` C=1 I=2（未知 outcome 可 succeeded；verify fail-close 无测；未知 sensor fail-open）；复审 `a9d7e884` C=0 I=0。
+- **Human edits：** none。
+- **红灯：** 初实现 `test_finish.py` 10 failed；fix 轮 8 failed / 10 passed（`.superpowers/sdd/t29-fix-red.txt`）。
+- **绿灯：** `tests/test_finish.py` **18 passed**。
+- **全量：** **393 passed, 4 skipped**。
+- **实现 commit：** `84664571c9342d987ea47dce839d3020c99b8b9f`
+- **修复 commit：** `f8b011f3f0669e5ed13c2f96cdaa405d3917bbe5`
+- **Minor 未修：** over_limit 终态未钉；源码字符串禁 git；`PatchArtifactPort` 协议与 stub 重复；verify 中 evaluate 非 Allow 无 HITL。
