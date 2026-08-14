@@ -699,3 +699,23 @@
 - **实现 commit：** `d3e26059001b40d47cfb0829067f63ef18e2fc11`
 - **修复 commits：** `943f3f7` `26be8b8` `07f6f4a` `45041f7`
 - **Minor 未修：** reject 后 resume 只跑一步；HITL risk 固定 NeedApproval；run 不 retrieve/gc_task_summaries。
+
+---
+
+## 2026-08-14 · T39 机制演示（WT-L）
+
+- **Task：** T39 离线四场景机制演示。未执行 T43。未合并 PR-L。
+- **Implementer：** `b3bb0090`（feat `d5a5afc`；fix `28c3073`）。
+- **Spec reviewer：** 初审 `bdf163ee` C=0 I=2；复审 `6489b70e` C=0 I=0。
+- **Quality reviewer：** 初审 `86b6aa44` C=0 I=0；复审 `fb609784` C=0 I=0。
+- **Human edits：** none。
+- **红灯：** 初实现 9 failed；fix 轮 2 failed。
+- **绿灯：** `tests/test_mechanism_demo.py` **9 passed**。
+- **全量：** **484 passed, 4 skipped**。
+- **实现 commit：** `d5a5afc598741011f62bff6d332b02368a36f6c4`
+- **修复 commit：** `28c30736bdb3d2b32a9b2819154d8828427fbae5`
+- **CI 修复 commit：** `23286e9be1fc7531fbcd2ffc0a33686b511d2c30`（子进程无 `PYTHONPATH`/`editable` 时 `import guardedcoder` 失败）。
+- **CI 修复 Spec reviewer：** `856a8371-8c05-455f-bd4e-f0430fe15bda` C=0 I=0。
+- **CI 修复 Quality reviewer：** `ae784784-b227-48df-bb6d-274b5637d4b8` C=0 I=0。
+- **CI：** push `31784374172` success；pull_request `31784377086` success。
+- **Minor 未修：** 越写范围 HITL 走 `classify_write` 非 `evaluate`（T15）；apply_patch 恢复只演示 retryable_same_attempt。
