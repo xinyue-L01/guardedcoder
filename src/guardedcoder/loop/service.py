@@ -55,6 +55,9 @@ from guardedcoder.workspace.worktree import (
 
 _PAUSED = frozenset({"awaiting_approval", "awaiting_envelope_revision"})
 _OK_STOP = frozenset({"succeeded", "unverified", *_PAUSED})
+_TERMINAL = frozenset(
+    {"succeeded", "unverified", "failed", "blocked", "exhausted", "error"}
+)
 _USER_MEMORY_TYPES = {
     "constraint": "constraint",
     "project_constraint": "constraint",
@@ -224,7 +227,7 @@ def _save_envelope(conn, task_id: str, envelope: Envelope) -> None:
     payload = envelope.model_dump(mode="json", exclude={"envelope_hash"})
     with write_txn(conn):
         conn.execute(
-            "INSERT INTO envelope_versions "
+            "INSERT OR IGNORE INTO envelope_versions "
             "(envelope_hash, task_id, snapshot_json) VALUES (?, ?, ?)",
             (
                 envelope.envelope_hash,
@@ -243,10 +246,10 @@ def _freeze(value: object) -> object:
 
 
 def _load_envelope(conn, task_id: str, envelope_hash: str) -> Envelope:
+    del task_id
     row = conn.execute(
-        "SELECT snapshot_json FROM envelope_versions "
-        "WHERE task_id = ? AND envelope_hash = ?",
-        (task_id, envelope_hash),
+        "SELECT snapshot_json FROM envelope_versions WHERE envelope_hash = ?",
+        (envelope_hash,),
     ).fetchone()
     if row is None:
         raise LifecycleError("stored envelope snapshot mismatch")
@@ -262,6 +265,16 @@ def _set_error(conn, task_id: str) -> None:
             update_task(conn, task_id, task["state_revision"], run_state="error")
     except (LifecycleError, StaleRevisionError):
         return
+
+
+def _fail_resume_verify(conn, task_id: str) -> None:
+    try:
+        state = _task_row(conn, task_id)["run_state"]
+    except LifecycleError:
+        return
+    if state in _TERMINAL:
+        return
+    _set_error(conn, task_id)
 
 
 def _pending_for(conn, task_id: str, fingerprint: str | None = None):
@@ -458,19 +471,26 @@ def _handle_run(
         base_commit=base_commit,
         harness_dir=harness,
     )
-    conn = _connect(harness)
-    create_task(
-        conn,
-        task_id=task_id,
-        run_state="running",
-        artifact_state="worktree_present",
-        repo_path=str(origin),
-        base_commit=ownership.base_commit,
-        worktree_identity=str(ownership.worktree_path),
-        envelope_hash=envelope.envelope_hash,
-        remaining_steps=envelope.max_steps,
-    )
-    _save_envelope(conn, task_id, envelope)
+    try:
+        conn = _connect(harness)
+        create_task(
+            conn,
+            task_id=task_id,
+            run_state="running",
+            artifact_state="worktree_present",
+            repo_path=str(origin),
+            base_commit=ownership.base_commit,
+            worktree_identity=str(ownership.worktree_path),
+            envelope_hash=envelope.envelope_hash,
+            remaining_steps=envelope.max_steps,
+        )
+        _save_envelope(conn, task_id, envelope)
+    except Exception:
+        try:
+            discard_owned_worktree(task_id, harness_dir=harness)
+        except Exception:
+            pass
+        raise
     task_description = getattr(args, "task", "") or ""
     _save_runtime(conn, task_id, task_description=task_description)
     print(f"task_id: {task_id}")
@@ -559,13 +579,16 @@ def _handle_resume(
         ApprovalError,
         StaleRevisionError,
     ) as exc:
-        _set_error(conn, task_id)
+        _fail_resume_verify(conn, task_id)
         print(str(exc))
+        return 1
+    if task["run_state"] in _TERMINAL:
+        print(f"task {task_id} is already {task['run_state']}")
         return 1
     envelope = _load_envelope(conn, task_id, task["envelope_hash"])
     pending = _pending_for(conn, task_id, args.fingerprint)
     if pending is None:
-        _set_error(conn, task_id)
+        _fail_resume_verify(conn, task_id)
         print("pending fingerprint mismatch")
         return 1
     if task["run_state"] in {"awaiting_approval", "executing_action"}:

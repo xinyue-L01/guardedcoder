@@ -153,6 +153,11 @@ def _db(harness: Path) -> sqlite3.Connection:
     return connect(harness / "guardedcoder.db")
 
 
+def _worktrees(origin: Path) -> list[str]:
+    output = _git(origin, "worktree", "list", "--porcelain")
+    return [line for line in output.splitlines() if line.startswith("worktree ")]
+
+
 def _patch_diff() -> str:
     return (
         "--- a/tracked.txt\n"
@@ -170,6 +175,141 @@ def _finish_llm() -> MockLLM:
             json.dumps({"action": "finish", "outcome": "success"}),
         ]
     )
+
+
+def test_second_identical_run_is_idempotent_without_orphan_worktree(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    origin, config_path, harness = _setup_origin(tmp_path)
+    digest = _envelope_hash(config_path)
+    argv = [
+        "run",
+        "--repo",
+        str(origin),
+        "--task",
+        "patch tracked file",
+        "--confirm-envelope-hash",
+        digest,
+    ]
+    assert (
+        _run(
+            argv,
+            config_path=config_path,
+            harness=harness,
+            llm=_finish_llm(),
+        )
+        == 0
+    )
+    capsys.readouterr()
+    try:
+        second = _run(
+            argv,
+            config_path=config_path,
+            harness=harness,
+            llm=_finish_llm(),
+        )
+    except sqlite3.IntegrityError as exc:
+        raise AssertionError(
+            "second identical run must not IntegrityError"
+        ) from exc
+    captured = capsys.readouterr()
+    blob = f"{captured.out}\n{captured.err}"
+    assert "UNIQUE constraint" not in blob
+    assert "IntegrityError" not in blob
+    conn = _db(harness)
+    tasks = conn.execute(
+        "SELECT task_id, worktree_identity, envelope_hash FROM tasks"
+    ).fetchall()
+    origin_real = origin.resolve()
+    extra = []
+    for line in _worktrees(origin):
+        path = Path(line.removeprefix("worktree ")).resolve()
+        if path != origin_real:
+            extra.append(path)
+    if second != 0:
+        assert len(extra) == 1
+        assert len(tasks) == 1
+    for _task_id, worktree, env_hash in tasks:
+        owned = Path(str(worktree)).resolve()
+        assert owned in extra
+        snap = conn.execute(
+            "SELECT snapshot_json FROM envelope_versions WHERE envelope_hash = ?",
+            (env_hash,),
+        ).fetchone()
+        assert snap is not None
+    for task_id, _worktree, _env_hash in tasks:
+        assert (
+            _run(
+                ["discard", str(task_id)],
+                config_path=config_path,
+                harness=harness,
+                llm=BoomLLM(),
+            )
+            == 0
+        )
+    leftover = []
+    for line in _worktrees(origin):
+        path = Path(line.removeprefix("worktree ")).resolve()
+        if path != origin_real:
+            leftover.append(path)
+    assert leftover == []
+
+
+def test_resume_on_succeeded_keeps_state_and_apply(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    origin, config_path, harness = _setup_origin(tmp_path)
+    digest = _envelope_hash(config_path)
+    assert (
+        _run(
+            [
+                "run",
+                "--repo",
+                str(origin),
+                "--task",
+                "patch tracked file",
+                "--confirm-envelope-hash",
+                digest,
+            ],
+            config_path=config_path,
+            harness=harness,
+            llm=_finish_llm(),
+        )
+        == 0
+    )
+    capsys.readouterr()
+    conn = _db(harness)
+    task_id = str(conn.execute("SELECT task_id FROM tasks").fetchone()[0])
+    old_fp = conn.execute(
+        "SELECT fingerprint FROM pending_actions WHERE task_id = ? "
+        "ORDER BY rowid DESC",
+        (task_id,),
+    ).fetchone()
+    fingerprint = str(old_fp[0]) if old_fp is not None else "mismatched-fingerprint"
+    resumed = _run(
+        ["resume", task_id, fingerprint],
+        config_path=config_path,
+        harness=harness,
+        llm=BoomLLM(),
+    )
+    capsys.readouterr()
+    assert resumed != 0
+    assert (
+        conn.execute(
+            "SELECT run_state FROM tasks WHERE task_id = ?",
+            (task_id,),
+        ).fetchone()[0]
+        == "succeeded"
+    )
+    confirmed = _run(
+        ["apply", task_id, "--confirm"],
+        config_path=config_path,
+        harness=harness,
+        llm=BoomLLM(),
+    )
+    capsys.readouterr()
+    assert confirmed == 0
+    assert (origin / "tracked.txt").read_bytes() == b"patched\n"
 
 
 def test_apply_and_discard_parse_task_id_only() -> None:
