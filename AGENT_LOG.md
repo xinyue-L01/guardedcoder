@@ -589,3 +589,18 @@
 - **Change:** treat `.worktrees/` like the existing ignored `.git`, `.venv`, and `.superpowers` local-state directories, with a parameterized regression test.
 - **Boundary:** tracked source remains scanned; only the Git-ignored implementation worktree container is excluded.
 - **Human edits:** none.
+
+---
+
+## 2026-08-14 · T25–T27 sensors + verify plan（WT-G）
+
+- **Task：** T25 exit_code、T26 junit_xml、T27 verify 计划。未执行 T28。未合并 PR-G。
+- **Implementer：** Cursor Agent（接管 Codex 未提交草稿，不删除；补边界测试后修 C/I）。
+- **Spec reviewer：** 初审 `b090557b` C=1 I=1（无计数属性的 `<failure>` 仍 PASS；PASS/FAIL 摘要无界）；复审 `fcb09738` C=0 I=0。
+- **Quality reviewer：** 初审 `ba87e00f` C=1 I=2（子 suite 计数、`forbid_dtd`、无界摘要）；复审 `03c83911` C=0 I=0。
+- **Human edits：** none。
+- **红灯：** `test_junit_timeout_and_not_started_ignore_xml` 超时被判 PASS；`test_junit_failure_child_without_count_attr_is_fail` PASS；`test_junit_pass_summary_is_bounded` 摘要 3042>2048；`test_testsuites_child_failure_count_is_fail` PASS；`test_dtd_without_entity_is_error` PASS。
+- **绿灯：** targeted `tests/test_sensor_exit.py tests/test_sensor_junit.py tests/test_verify_plan.py` → **16 passed**。
+- **全量：** **358 passed, 4 skipped**。secret scan clean 119 files。
+- **实现 commit：** `c8d4b53cb79e028a2f121d5dba2dee3133b57235`
+- **Minor 未修：** truncated + exit 0 仍 PASS（`output_truncated` 承载）；verify plan 测试只查 `run_profile`；非数字 JUnit 属性走 ERROR。
