@@ -118,3 +118,50 @@ def approve(conn: sqlite3.Connection, task_id: str, fingerprint: str) -> str:
                 f"bound {bound_revision}"
             )
         return pending_id
+
+
+def reject(conn: sqlite3.Connection, task_id: str, fingerprint: str) -> str:
+    with write_txn(conn):
+        pending = conn.execute(
+            "SELECT pending_action_id, fingerprint, state_revision, consumed "
+            "FROM pending_actions WHERE task_id = ? AND consumed = 0",
+            (task_id,),
+        ).fetchone()
+        if pending is None:
+            any_pending = conn.execute(
+                "SELECT pending_action_id, consumed FROM pending_actions "
+                "WHERE task_id = ? ORDER BY consumed DESC",
+                (task_id,),
+            ).fetchone()
+            if any_pending is not None and any_pending[1]:
+                raise PendingConsumedError(
+                    f"pending action {any_pending[0]} already consumed"
+                )
+            raise ApprovalError(f"no pending action for task {task_id}")
+        pending_id, stored_fp, bound_revision, consumed = pending
+        del consumed
+        if stored_fp != fingerprint:
+            raise ApprovalError(f"fingerprint mismatch for task {task_id}")
+        cur = conn.execute(
+            "UPDATE pending_actions SET consumed = 1 "
+            "WHERE pending_action_id = ? AND consumed = 0 "
+            "AND fingerprint = ? AND state_revision = ("
+            "SELECT state_revision FROM tasks WHERE task_id = ?"
+            ")",
+            (pending_id, fingerprint, task_id),
+        )
+        if cur.rowcount != 1:
+            raise ApprovalError(
+                f"stale pending revision for task {task_id}: "
+                f"bound {bound_revision}"
+            )
+        cur = conn.execute(
+            "UPDATE tasks SET run_state = ?, state_revision = state_revision + 1 "
+            "WHERE task_id = ? AND run_state = ? AND state_revision = ?",
+            ("running", task_id, "awaiting_approval", bound_revision),
+        )
+        if cur.rowcount != 1:
+            raise ApprovalError(
+                f"reject could not return task {task_id} to running"
+            )
+        return pending_id

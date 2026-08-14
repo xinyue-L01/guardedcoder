@@ -25,12 +25,16 @@ def _fake_key() -> str:
 
 
 def _argv_for(command: str) -> list[str]:
-    if command in {"approve", "reject"}:
+    if command in {"approve", "reject", "resume"}:
         return [command, "task-1", "fp-1"]
+    if command in {"apply", "discard"}:
+        return [command, "task-1"]
     if command == "auth":
         return ["auth", "status"]
     if command == "config":
         return ["config", "show"]
+    if command == "memory":
+        return ["memory", "list", "--repo-id", "repo-1"]
     return [command]
 
 
@@ -116,9 +120,12 @@ def test_parse_approve_exposes_both_positionals() -> None:
     assert ns.fingerprint == "deadbeef"
 
 
-def test_default_dispatch_is_noop() -> None:
-    assert main(["run"]) == 0
-    assert main(["memory"]) == 0
+def test_run_without_confirm_is_nonzero() -> None:
+    assert main(["run"]) != 0
+
+
+def test_memory_without_subcommand_is_nonzero() -> None:
+    assert main(["memory"]) != 0
 
 
 def test_unknown_command_error_redacts_fake_key(capsys: pytest.CaptureFixture[str]) -> None:
