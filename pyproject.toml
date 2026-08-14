@@ -20,6 +20,9 @@ dev = [
     "build",
 ]
 
+[project.scripts]
+guardedcoder = "guardedcoder.cli:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
