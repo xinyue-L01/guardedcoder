@@ -637,3 +637,18 @@
 - **实现 commit：** `84664571c9342d987ea47dce839d3020c99b8b9f`
 - **修复 commit：** `f8b011f3f0669e5ed13c2f96cdaa405d3917bbe5`
 - **Minor 未修：** over_limit 终态未钉；源码字符串禁 git；`PatchArtifactPort` 协议与 stub 重复；verify 中 evaluate 非 Allow 无 HITL。
+
+---
+
+## 2026-08-14 · T30 FAIL 门控 MockLLM（WT-H）
+
+- **Task：** T30 反馈必须被看到才改动作。未执行 T36。未合并 PR-H。
+- **Implementer：** `66f4363f`（feat `925eaee`）。
+- **Spec reviewer：** `11bf007a` C=0 I=0。
+- **Quality reviewer：** `69008f4d` C=0 I=0。
+- **Human edits：** none。
+- **红灯：** `test_feedback_loop.py` 6 failed / 1 passed（`gate_on_fail` 尚不存在）。
+- **绿灯：** `test_feedback_loop.py` + 相关 **46 passed**。
+- **全量：** **400 passed, 4 skipped**。
+- **实现 commit：** `925eaee023442f3376bc5b7d1c197a872717c16f`
+- **Minor 未修：** 整段正则非 Verdict 解析；只门控二次+ apply_patch；kv 形态比 JSON 松。
