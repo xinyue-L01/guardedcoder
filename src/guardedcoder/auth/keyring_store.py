@@ -18,9 +18,18 @@ class KeyringBackend(Protocol):
 def _default_backend() -> KeyringBackend:
     try:
         import keyring
-    except Exception as exc:
-        raise KeyringError("keyring unavailable") from exc
+    except Exception:
+        raise KeyringError("keyring unavailable") from None
     return keyring
+
+
+def _is_missing_entry(exc: BaseException) -> bool:
+    if isinstance(exc, KeyError):
+        return True
+    if exc.__class__.__name__ != "PasswordDeleteError":
+        return False
+    text = str(exc).casefold()
+    return "not found" in text or "no such" in text
 
 
 class KeyringStore:
@@ -32,25 +41,23 @@ class KeyringStore:
             self._backend.set_password(SERVICE_NAME, provider_id, secret)
         except KeyringError:
             raise
-        except Exception as exc:
-            raise KeyringError("keyring unavailable") from exc
+        except Exception:
+            raise KeyringError("keyring unavailable") from None
 
     def get(self, provider_id: str) -> str | None:
         try:
             return self._backend.get_password(SERVICE_NAME, provider_id)
         except KeyringError:
             raise
-        except Exception as exc:
-            raise KeyringError("keyring unavailable") from exc
+        except Exception:
+            raise KeyringError("keyring unavailable") from None
 
     def clear(self, provider_id: str) -> None:
         try:
             self._backend.delete_password(SERVICE_NAME, provider_id)
         except KeyringError:
             raise
-        except KeyError:
-            return
         except Exception as exc:
-            if exc.__class__.__name__ == "PasswordDeleteError":
+            if _is_missing_entry(exc):
                 return
-            raise KeyringError("keyring unavailable") from exc
+            raise KeyringError("keyring unavailable") from None

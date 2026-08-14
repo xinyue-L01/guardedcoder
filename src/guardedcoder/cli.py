@@ -25,15 +25,24 @@ _CONFIG_COMMANDS = ("init", "validate", "show")
 _AUTH_COMMANDS = ("set", "status", "update", "clear")
 
 
+def _sanitize_argparse_message(message: str) -> str:
+    if "unrecognized arguments:" in message:
+        return "unrecognized arguments: [redacted]"
+    return redact_text(message)
+
+
 class _RedactingArgumentParser(argparse.ArgumentParser):
     def error(self, message: str) -> None:
         self.print_usage(sys.stderr)
-        print(redact_text(f"{self.prog}: error: {message}"), file=sys.stderr)
+        print(
+            redact_text(f"{self.prog}: error: {_sanitize_argparse_message(message)}"),
+            file=sys.stderr,
+        )
         raise SystemExit(2)
 
     def exit(self, status: int = 0, message: str | None = None) -> None:
         if message:
-            print(redact_text(message), file=sys.stderr)
+            print(redact_text(_sanitize_argparse_message(message)), file=sys.stderr)
         raise SystemExit(status)
 
 

@@ -340,21 +340,34 @@ def test_keyring_store_does_not_read_another_provider() -> None:
     assert store.get("other-provider") == _other_key()
 
 
-def test_keyring_error_redacts_secret_from_backend(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def _leaky_backend() -> object:
     class Leaky:
         def set_password(self, service: str, username: str, password: str) -> None:
             raise RuntimeError("store failed for " + password)
 
         def get_password(self, service: str, username: str) -> str | None:
-            return None
+            raise RuntimeError("read failed for stored secret")
 
         def delete_password(self, service: str, username: str) -> None:
-            return None
+            raise RuntimeError("delete failed for stored secret")
 
+    return Leaky()
+
+
+def test_keyring_error_does_not_chain_backend_exception() -> None:
+    store = KeyringStore(backend=_leaky_backend())
+    with pytest.raises(KeyringError) as caught:
+        store.set("openai-compat", _fake_key())
+    assert caught.value.__cause__ is None
+    assert _fake_key() not in str(caught.value)
+    assert _fake_key() not in repr(caught.value)
+
+
+def test_keyring_error_redacts_secret_from_backend(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     _init(tmp_path)
-    store = KeyringStore(backend=Leaky())
+    store = KeyringStore(backend=_leaky_backend())
     code = main(
         ["auth", "set"],
         getpass_fn=lambda prompt="": _fake_key(),
@@ -364,6 +377,74 @@ def test_keyring_error_redacts_secret_from_backend(
     err = capsys.readouterr().err
     assert code != 0
     assert _fake_key() not in err
+    with pytest.raises(KeyringError) as caught:
+        store.set("openai-compat", _fake_key())
+    assert caught.value.__cause__ is None
+
+
+def test_auth_set_cli_argument_not_echoed_for_nonsk_secret(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    secret = "plain" + "Secret99"
+    _init(tmp_path)
+    capsys.readouterr()
+    code, store, _fake = _run(["auth", "set", secret], tmp_path)
+    err = capsys.readouterr().err
+    assert code != 0
+    assert secret not in err
+    assert store.get("openai-compat") is None
+
+
+class PasswordDeleteError(Exception):
+    """Stand-in for keyring.errors.PasswordDeleteError."""
+
+
+def test_auth_clear_delete_failure_is_fail_closed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    class FailDelete:
+        def set_password(self, service: str, username: str, password: str) -> None:
+            return None
+
+        def get_password(self, service: str, username: str) -> str | None:
+            return None
+
+        def delete_password(self, service: str, username: str) -> None:
+            raise PasswordDeleteError("delete failed")
+
+    _init(tmp_path)
+    store = KeyringStore(backend=FailDelete())
+    code = main(
+        ["auth", "clear"],
+        key_store=store,
+        config_path=_config_path(tmp_path),
+    )
+    err = capsys.readouterr().err
+    assert code != 0
+    with pytest.raises(KeyringError) as caught:
+        store.clear("openai-compat")
+    assert caught.value.__cause__ is None
+    assert "delete failed" not in err
+
+
+def test_auth_clear_missing_entry_still_succeeds(tmp_path: Path) -> None:
+    class Missing:
+        def set_password(self, service: str, username: str, password: str) -> None:
+            return None
+
+        def get_password(self, service: str, username: str) -> str | None:
+            return None
+
+        def delete_password(self, service: str, username: str) -> None:
+            raise PasswordDeleteError("Password not found")
+
+    _init(tmp_path)
+    code = main(
+        ["auth", "clear"],
+        key_store=KeyringStore(backend=Missing()),
+        config_path=_config_path(tmp_path),
+    )
+    assert code == 0
 
 
 def _recording_client(seen: list[httpx.Request], *, redirect: bool = False) -> httpx.Client:
