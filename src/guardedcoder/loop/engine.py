@@ -382,6 +382,7 @@ def _finish(
     profiles = {item.profile_id: item for item in envelope.profiles}
     all_pass = True
     last_observation: Observation | CommandResult | None = None
+    fail_observation: Observation | None = None
     for profile_id in plan.verify_profile_ids:
         verify_action = RunCommandAction(action="run_command", profile_id=profile_id)
         task = _task_row(conn, task_id)
@@ -410,6 +411,10 @@ def _finish(
         parsed = _sensor_verdict(profile, last_observation)
         if parsed.status is not VerdictStatus.PASS:
             all_pass = False
+            fail_observation = Observation(
+                body=parsed.model_dump_json(),
+                truncated=False,
+            )
 
     if all_pass:
         port = patch_port if patch_port is not None else StubPatchArtifactPort()
@@ -437,7 +442,9 @@ def _finish(
     next_state = _after_verify_state(conn, task_id)
     _set_task_state(conn, task_id, run_state=next_state)
     return StepResult(
-        action=action, observation=last_observation, run_state=next_state
+        action=action,
+        observation=fail_observation if fail_observation is not None else last_observation,
+        run_state=next_state,
     )
 
 
