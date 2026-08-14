@@ -8,7 +8,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from guardedcoder.errors import ExecutionWindowOpenError, StaleRevisionError
+from guardedcoder.errors import (
+    ExecutionWindowOpenError,
+    PermitInvalidError,
+    StaleRevisionError,
+)
 from guardedcoder.fingerprint import SCHEMA_VERSION, compute_fingerprint
 from guardedcoder.governance.evaluate import VerdictKind, evaluate
 from guardedcoder.llm.port import LLMPort
@@ -33,13 +37,7 @@ from guardedcoder.persist.permit import consume_permit_and_open_window, create_p
 from guardedcoder.persist.recover import RecoverDecision, recover
 from guardedcoder.persist.store import update_task
 from guardedcoder.persist.txn import write_txn
-from guardedcoder.tools.apply_patch import (
-    _apply_hunks,
-    _involved_paths,
-    _mark_bytes,
-    _parse_diff,
-    _read_text,
-)
+from guardedcoder.tools.apply_patch import preview_patch
 from guardedcoder.tools.executor import execute
 
 _ACTION_KIND = {
@@ -109,54 +107,28 @@ def _fingerprint(task: dict[str, Any], envelope: Envelope, action: Action) -> st
     )
 
 
-def _images_for_patch(
-    worktree: Path, diff: str
-) -> tuple[dict[str, dict[str, object]], dict[str, dict[str, object]]]:
-    files = _parse_diff(diff)
-    root = worktree.resolve()
-    all_paths: list[str] = []
-    planned: dict[str, bytes | None] = {}
-    for file_patch in files:
-        for rel in _involved_paths(file_patch):
-            if rel not in all_paths:
-                all_paths.append(rel)
-        old_rel = file_patch.old_path
-        new_rel = file_patch.new_path
-        creating = old_rel is None
-        deleting = new_rel is None
-        renaming = (
-            old_rel is not None and new_rel is not None and old_rel != new_rel
-        )
-        if creating:
-            original = ""
-        else:
-            assert old_rel is not None
-            original = _read_text(root / old_rel)
-        updated = (
-            _apply_hunks(original, file_patch.hunks) if file_patch.hunks else original
-        )
-        new_bytes = updated.encode("utf-8")
-        if deleting:
-            assert old_rel is not None
-            planned[old_rel] = None
-        elif renaming:
-            assert old_rel is not None and new_rel is not None
-            planned[new_rel] = new_bytes
-            planned[old_rel] = None
-        else:
-            assert new_rel is not None
-            planned[new_rel] = new_bytes
-    preimage = {
-        rel: _mark_bytes(
-            None if not (root / rel).is_file() else (root / rel).read_bytes()
-        )
-        for rel in all_paths
-    }
-    postimage = {
-        rel: _mark_bytes(planned[rel]) if rel in planned else preimage[rel]
-        for rel in all_paths
-    }
-    return preimage, postimage
+def _permit_fingerprint(conn: sqlite3.Connection, permit_id: str) -> str:
+    row = conn.execute(
+        "SELECT fingerprint FROM permits WHERE permit_id = ?",
+        (permit_id,),
+    ).fetchone()
+    if row is None:
+        raise PermitInvalidError(f"permit {permit_id} not found")
+    return str(row[0])
+
+
+def _require_matching_fingerprint(
+    conn: sqlite3.Connection,
+    *,
+    task: dict[str, Any],
+    envelope: Envelope,
+    action: Action,
+    permit_id: str,
+) -> None:
+    expected = _fingerprint(task, envelope, action)
+    stored = _permit_fingerprint(conn, permit_id)
+    if expected != stored:
+        raise PermitInvalidError(f"fingerprint mismatch for permit {permit_id}")
 
 
 def _complete_window(
@@ -176,6 +148,26 @@ def _complete_window(
         conn.execute(
             "UPDATE execution_windows SET status = ? WHERE window_id = ?",
             ("succeeded", window_id),
+        )
+
+
+def _fail_close_window(
+    conn: sqlite3.Connection, *, task_id: str, window_id: str
+) -> None:
+    task = _task_row(conn, task_id)
+    with write_txn(conn):
+        cur = conn.execute(
+            "UPDATE tasks SET run_state = ?, state_revision = state_revision + 1 "
+            "WHERE task_id = ? AND state_revision = ?",
+            ("running", task_id, task["state_revision"]),
+        )
+        if cur.rowcount == 0:
+            raise StaleRevisionError(
+                f"stale revision for task {task_id}: expected {task['state_revision']}"
+            )
+        conn.execute(
+            "UPDATE execution_windows SET status = ? WHERE window_id = ?",
+            ("error", window_id),
         )
 
 
@@ -209,12 +201,23 @@ def _retry_started_patch(
     task_dir: Path | None,
 ) -> Observation | CommandResult:
     task = _task_row(conn, task_id)
+    _require_matching_fingerprint(
+        conn,
+        task=task,
+        envelope=envelope,
+        action=action,
+        permit_id=window["permit_id"],
+    )
     decision = recover(
         conn,
         task_id=task_id,
         workspace=worktree,
         expected_revision=task["state_revision"],
     )
+    if decision == RecoverDecision.recorded_success:
+        return Observation(body="already applied", truncated=False)
+    if decision == RecoverDecision.recorded_error:
+        return Observation(body="recovered error", truncated=False)
     if decision != RecoverDecision.retryable_same_attempt:
         raise ExecutionWindowOpenError(
             f"recovered window for task {task_id} is not retryable"
@@ -226,17 +229,21 @@ def _retry_started_patch(
         expected_revision=task["state_revision"],
         attempt_id=str(uuid.uuid4()),
     )
-    return execute(
-        conn,
-        task_id=task_id,
-        permit_id=window["permit_id"],
-        window_id=window["window_id"],
-        action=action,
-        worktree=worktree,
-        claim_id=claim_id,
-        task_dir=task_dir,
-        envelope=envelope,
-    )
+    try:
+        return execute(
+            conn,
+            task_id=task_id,
+            permit_id=window["permit_id"],
+            window_id=window["window_id"],
+            action=action,
+            worktree=worktree,
+            claim_id=claim_id,
+            task_dir=task_dir,
+            envelope=envelope,
+        )
+    except Exception:
+        _fail_close_window(conn, task_id=task_id, window_id=window["window_id"])
+        raise
 
 
 def step(
@@ -294,6 +301,7 @@ def step(
         )
 
     window = _active_window(conn, task_id)
+    kind = _ACTION_KIND[type(action)]
     if (
         window is not None
         and isinstance(action, ApplyPatchAction)
@@ -309,6 +317,42 @@ def step(
             window=window,
             task_dir=task_dir,
         )
+        still = _active_window(conn, task_id)
+        if still is not None and still["window_id"] == window["window_id"]:
+            _complete_window(conn, task_id=task_id, window_id=window["window_id"])
+        return StepResult(
+            action=action,
+            observation=observation,
+            run_state=_task_row(conn, task_id)["run_state"],
+        )
+    if (
+        window is not None
+        and not window["execution_started"]
+        and window["action_kind"] == kind
+    ):
+        _require_matching_fingerprint(
+            conn,
+            task=task,
+            envelope=envelope,
+            action=action,
+            permit_id=window["permit_id"],
+        )
+        try:
+            observation = execute(
+                conn,
+                task_id=task_id,
+                permit_id=window["permit_id"],
+                window_id=window["window_id"],
+                action=action,
+                worktree=worktree,
+                task_dir=task_dir,
+                envelope=envelope,
+            )
+        except Exception:
+            _fail_close_window(
+                conn, task_id=task_id, window_id=window["window_id"]
+            )
+            raise
         _complete_window(conn, task_id=task_id, window_id=window["window_id"])
         return StepResult(
             action=action,
@@ -320,7 +364,11 @@ def step(
             f"task {task_id} already has an active execution window"
         )
 
-    kind = _ACTION_KIND[type(action)]
+    preimage = postimage = None
+    if isinstance(action, ApplyPatchAction):
+        preimage, postimage = preview_patch(
+            worktree, action.diff, allow_delete=envelope.allow_delete
+        )
     permit_id = create_permit(
         conn,
         task_id=task_id,
@@ -330,9 +378,6 @@ def step(
         expected_revision=task["state_revision"],
     )
     task = _task_row(conn, task_id)
-    preimage = postimage = None
-    if isinstance(action, ApplyPatchAction):
-        preimage, postimage = _images_for_patch(worktree, action.diff)
     window_id = consume_permit_and_open_window(
         conn,
         task_id=task_id,
@@ -342,16 +387,20 @@ def step(
         preimage=preimage,
         postimage=postimage,
     )
-    observation = execute(
-        conn,
-        task_id=task_id,
-        permit_id=permit_id,
-        window_id=window_id,
-        action=action,
-        worktree=worktree,
-        task_dir=task_dir,
-        envelope=envelope,
-    )
+    try:
+        observation = execute(
+            conn,
+            task_id=task_id,
+            permit_id=permit_id,
+            window_id=window_id,
+            action=action,
+            worktree=worktree,
+            task_dir=task_dir,
+            envelope=envelope,
+        )
+    except Exception:
+        _fail_close_window(conn, task_id=task_id, window_id=window_id)
+        raise
     _complete_window(conn, task_id=task_id, window_id=window_id)
     return StepResult(
         action=action,

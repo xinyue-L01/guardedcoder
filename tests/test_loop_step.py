@@ -8,16 +8,17 @@ from types import SimpleNamespace
 
 import pytest
 
-from guardedcoder.errors import ClaimConflictError
+from guardedcoder.errors import ClaimConflictError, PermitInvalidError, PatchError
 from guardedcoder.fingerprint import SCHEMA_VERSION, compute_fingerprint
 from guardedcoder.governance.evaluate import Verdict, VerdictKind
 from guardedcoder.llm.mock import MockLLM
 from guardedcoder.loop import engine as engine_mod
 from guardedcoder.loop.context import build_context
 from guardedcoder.loop.engine import step
-from guardedcoder.models.actions import ApplyPatchAction, ListDirAction
+from guardedcoder.models.actions import Action, ApplyPatchAction, ListDirAction
 from guardedcoder.models.envelope import CommandProfile, Envelope
 from guardedcoder.models.task import TaskBudget
+from guardedcoder.persist.claim import claim_recovered_attempt
 from guardedcoder.persist.db import connect
 from guardedcoder.persist.permit import consume_permit_and_open_window, create_permit
 from guardedcoder.persist.store import create_task
@@ -85,6 +86,67 @@ def _diff(old: str, new: str) -> str:
         f"-{old.rstrip()}\n"
         f"+{new.rstrip()}\n"
     )
+
+
+def _fp_for(conn: sqlite3.Connection, envelope: Envelope, action: Action) -> str:
+    task = _task(conn)
+    return compute_fingerprint(
+        schema_version=SCHEMA_VERSION,
+        task_id=task["task_id"],
+        envelope_hash=envelope.envelope_hash,
+        base_commit=task["base_commit"],
+        worktree_identity=task["worktree_identity"],
+        normalized_action=action.model_dump(mode="json"),
+    )
+
+
+def _patch_envelope() -> Envelope:
+    return Envelope(
+        read_paths=(".",),
+        write_paths=(".",),
+        profiles=(),
+        verify_profiles=(),
+        max_steps=10,
+        max_total_seconds=300,
+        allow_delete=False,
+        allow_network=False,
+        config_digest="abc",
+    )
+
+
+def _open_apply_window(
+    conn: sqlite3.Connection,
+    envelope: Envelope,
+    diff: str,
+    *,
+    pre: str,
+    post: str,
+    started: bool,
+) -> tuple[str, str]:
+    action = ApplyPatchAction(action="apply_patch", diff=diff)
+    permit_id = create_permit(
+        conn,
+        task_id="t1",
+        action_id="a1",
+        fingerprint=_fp_for(conn, envelope, action),
+        envelope_hash=envelope.envelope_hash,
+        expected_revision=_task(conn)["state_revision"],
+    )
+    window_id = consume_permit_and_open_window(
+        conn,
+        task_id="t1",
+        permit_id=permit_id,
+        expected_revision=_task(conn)["state_revision"],
+        action_kind="apply_patch",
+        preimage={"a.txt": _mark(True, pre)},
+        postimage={"a.txt": _mark(True, post)},
+    )
+    if started:
+        conn.execute(
+            "UPDATE execution_windows SET execution_started = 1 WHERE window_id = ?",
+            (window_id,),
+        )
+    return permit_id, window_id
 
 
 def _spy_order(monkeypatch: pytest.MonkeyPatch, conn: sqlite3.Connection) -> SimpleNamespace:
@@ -206,39 +268,12 @@ def test_recovered_apply_patch_claims_then_executes(
     ws = tmp_path / "ws"
     ws.mkdir()
     (ws / "a.txt").write_bytes(b"before\n")
-    envelope = Envelope(
-        read_paths=(".",),
-        write_paths=(".",),
-        profiles=(),
-        verify_profiles=(),
-        max_steps=10,
-        max_total_seconds=300,
-        allow_delete=False,
-        allow_network=False,
-        config_digest="abc",
-    )
+    envelope = _patch_envelope()
     conn = connect(tmp_path / "g.db")
     _boot(conn, ws, envelope)
-    permit_id = create_permit(
-        conn,
-        task_id="t1",
-        action_id="a1",
-        fingerprint="fp1",
-        envelope_hash=envelope.envelope_hash,
-        expected_revision=1,
-    )
-    window_id = consume_permit_and_open_window(
-        conn,
-        task_id="t1",
-        permit_id=permit_id,
-        expected_revision=2,
-        action_kind="apply_patch",
-        preimage={"a.txt": _mark(True, "before\n")},
-        postimage={"a.txt": _mark(True, "after\n")},
-    )
-    conn.execute(
-        "UPDATE execution_windows SET execution_started = 1 WHERE window_id = ?",
-        (window_id,),
+    diff = _diff("before", "after")
+    _open_apply_window(
+        conn, envelope, diff, pre="before\n", post="after\n", started=True
     )
     order: list[str] = []
     real_claim = engine_mod.claim_recovered_attempt
@@ -261,7 +296,6 @@ def test_recovered_apply_patch_claims_then_executes(
     monkeypatch.setattr(engine_mod, "claim_recovered_attempt", spy_claim)
     monkeypatch.setattr(engine_mod, "execute", spy_execute)
     monkeypatch.setattr(engine_mod, "create_permit", spy_create)
-    diff = _diff("before", "after")
     llm = MockLLM(responses=[json.dumps({"action": "apply_patch", "diff": diff})])
 
     result = step(
@@ -280,57 +314,25 @@ def test_recovered_apply_patch_claims_then_executes(
 
 
 def test_recovered_apply_patch_without_claim_does_not_execute(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
     ws = tmp_path / "ws"
     ws.mkdir()
     (ws / "a.txt").write_bytes(b"before\n")
-    envelope = Envelope(
-        read_paths=(".",),
-        write_paths=(".",),
-        profiles=(),
-        verify_profiles=(),
-        max_steps=10,
-        max_total_seconds=300,
-        allow_delete=False,
-        allow_network=False,
-        config_digest="abc",
-    )
+    envelope = _patch_envelope()
     conn = connect(tmp_path / "g.db")
     _boot(conn, ws, envelope)
-    permit_id = create_permit(
-        conn,
-        task_id="t1",
-        action_id="a1",
-        fingerprint="fp1",
-        envelope_hash=envelope.envelope_hash,
-        expected_revision=1,
-    )
-    window_id = consume_permit_and_open_window(
-        conn,
-        task_id="t1",
-        permit_id=permit_id,
-        expected_revision=2,
-        action_kind="apply_patch",
-        preimage={"a.txt": _mark(True, "before\n")},
-        postimage={"a.txt": _mark(True, "after\n")},
-    )
-    conn.execute(
-        "UPDATE execution_windows SET execution_started = 1 WHERE window_id = ?",
-        (window_id,),
-    )
-    executed: list[object] = []
-
-    def boom(*args: object, **kwargs: object) -> str:
-        raise ClaimConflictError("already claimed")
-
-    def spy_execute(*args: object, **kwargs: object):
-        executed.append(kwargs)
-        raise AssertionError("execute must not run without a claim")
-
-    monkeypatch.setattr(engine_mod, "claim_recovered_attempt", boom)
-    monkeypatch.setattr(engine_mod, "execute", spy_execute)
     diff = _diff("before", "after")
+    _permit_id, window_id = _open_apply_window(
+        conn, envelope, diff, pre="before\n", post="after\n", started=True
+    )
+    claim_recovered_attempt(
+        conn,
+        task_id="t1",
+        window_id=window_id,
+        expected_revision=_task(conn)["state_revision"],
+        attempt_id="held",
+    )
     llm = MockLLM(responses=[json.dumps({"action": "apply_patch", "diff": diff})])
 
     with pytest.raises(ClaimConflictError):
@@ -343,7 +345,6 @@ def test_recovered_apply_patch_without_claim_does_not_execute(
             task_description="retry patch",
         )
 
-    assert executed == []
     assert (ws / "a.txt").read_bytes() == b"before\n"
 
 
@@ -493,3 +494,277 @@ def test_fingerprint_matches_normalized_action_for_hitl(
         normalized_action=normalized,
     )
     assert row[0] == expected
+
+
+def test_preview_failure_does_not_leave_unconsumed_permit(tmp_path: Path) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "a.txt").write_bytes(b"before\n")
+    envelope = _patch_envelope()
+    conn = connect(tmp_path / "g.db")
+    _boot(conn, ws, envelope)
+    llm = MockLLM(
+        responses=[json.dumps({"action": "apply_patch", "diff": "not-a-diff"})]
+    )
+
+    with pytest.raises(PatchError):
+        step(
+            conn,
+            task_id="t1",
+            envelope=envelope,
+            llm=llm,
+            worktree=ws,
+            task_description="bad patch",
+        )
+
+    assert conn.execute("SELECT COUNT(*) FROM permits").fetchone()[0] == 0
+    assert _task(conn)["remaining_steps"] == 10
+    assert _task(conn)["run_state"] == "running"
+
+
+def test_execute_failure_closes_window_so_next_step_proceeds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ws = tmp_path / "ws"
+    (ws / "src").mkdir(parents=True)
+    (ws / "src" / "a.py").write_text("print(1)\n", encoding="utf-8")
+    envelope = _envelope()
+    conn = connect(tmp_path / "g.db")
+    _boot(conn, ws, envelope)
+    real_execute = engine_mod.execute
+    calls = {"n": 0}
+
+    def boom_once(*args: object, **kwargs: object):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("execute exploded")
+        return real_execute(*args, **kwargs)
+
+    monkeypatch.setattr(engine_mod, "execute", boom_once)
+    with pytest.raises(RuntimeError, match="execute exploded"):
+        step(
+            conn,
+            task_id="t1",
+            envelope=envelope,
+            llm=MockLLM(responses=['{"action":"list_dir","path":"src"}']),
+            worktree=ws,
+            task_description="first",
+        )
+    row = conn.execute(
+        "SELECT status, execution_started FROM execution_windows"
+    ).fetchone()
+    assert row is not None
+    assert row[0] in {"error", "failed"}
+    assert _task(conn)["run_state"] != "executing_action"
+
+    result = step(
+        conn,
+        task_id="t1",
+        envelope=envelope,
+        llm=MockLLM(responses=['{"action":"list_dir","path":"src"}']),
+        worktree=ws,
+        task_description="second",
+    )
+    assert result.observation is not None
+    assert "a.py" in result.observation.body
+
+
+def test_consume_sees_workspace_still_at_preimage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "a.txt").write_bytes(b"before\n")
+    envelope = _patch_envelope()
+    conn = connect(tmp_path / "g.db")
+    _boot(conn, ws, envelope)
+    at_consume: list[bytes] = []
+    real_consume = engine_mod.consume_permit_and_open_window
+
+    def spy_consume(*args: object, **kwargs: object):
+        at_consume.append((ws / "a.txt").read_bytes())
+        return real_consume(*args, **kwargs)
+
+    monkeypatch.setattr(engine_mod, "consume_permit_and_open_window", spy_consume)
+    diff = _diff("before", "after")
+    step(
+        conn,
+        task_id="t1",
+        envelope=envelope,
+        llm=MockLLM(responses=[json.dumps({"action": "apply_patch", "diff": diff})]),
+        worktree=ws,
+        task_description="patch file",
+    )
+    assert at_consume == [b"before\n"]
+    assert (ws / "a.txt").read_bytes() == b"after\n"
+
+
+def test_recovered_fingerprint_mismatch_does_not_execute(tmp_path: Path) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "a.txt").write_bytes(b"before\n")
+    envelope = _patch_envelope()
+    conn = connect(tmp_path / "g.db")
+    _boot(conn, ws, envelope)
+    original = _diff("before", "after")
+    _open_apply_window(
+        conn, envelope, original, pre="before\n", post="after\n", started=True
+    )
+    other = _diff("before", "other")
+    llm = MockLLM(responses=[json.dumps({"action": "apply_patch", "diff": other})])
+
+    with pytest.raises(PermitInvalidError):
+        step(
+            conn,
+            task_id="t1",
+            envelope=envelope,
+            llm=llm,
+            worktree=ws,
+            task_description="wrong patch",
+        )
+
+    assert (ws / "a.txt").read_bytes() == b"before\n"
+    win = conn.execute(
+        "SELECT status FROM execution_windows WHERE status = 'executing_action'"
+    ).fetchone()
+    assert win is not None
+
+
+def test_recorded_success_returns_observation_without_claim_or_execute(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "a.txt").write_bytes(b"after\n")
+    envelope = _patch_envelope()
+    conn = connect(tmp_path / "g.db")
+    _boot(conn, ws, envelope)
+    diff = _diff("before", "after")
+    _open_apply_window(
+        conn, envelope, diff, pre="before\n", post="after\n", started=True
+    )
+    claimed: list[object] = []
+    executed: list[object] = []
+
+    def spy_claim(*args: object, **kwargs: object) -> str:
+        claimed.append(kwargs)
+        raise AssertionError("claim must not run on recorded_success")
+
+    def spy_execute(*args: object, **kwargs: object):
+        executed.append(kwargs)
+        raise AssertionError("execute must not run on recorded_success")
+
+    monkeypatch.setattr(engine_mod, "claim_recovered_attempt", spy_claim)
+    monkeypatch.setattr(engine_mod, "execute", spy_execute)
+    llm = MockLLM(responses=[json.dumps({"action": "apply_patch", "diff": diff})])
+
+    result = step(
+        conn,
+        task_id="t1",
+        envelope=envelope,
+        llm=llm,
+        worktree=ws,
+        task_description="already done",
+    )
+
+    assert claimed == []
+    assert executed == []
+    assert result.observation is not None
+    assert _task(conn)["run_state"] == "running"
+    assert (ws / "a.txt").read_bytes() == b"after\n"
+    status = conn.execute("SELECT status FROM execution_windows").fetchone()
+    assert status is not None
+    assert status[0] == "succeeded"
+
+
+def test_recorded_error_does_not_raise_window_open(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "a.txt").write_bytes(b"other\n")
+    envelope = _patch_envelope()
+    conn = connect(tmp_path / "g.db")
+    _boot(conn, ws, envelope)
+    diff = _diff("before", "after")
+    _open_apply_window(
+        conn, envelope, diff, pre="before\n", post="after\n", started=True
+    )
+    executed: list[object] = []
+
+    def spy_execute(*args: object, **kwargs: object):
+        executed.append(kwargs)
+        raise AssertionError("execute must not run on recorded_error")
+
+    monkeypatch.setattr(engine_mod, "execute", spy_execute)
+    llm = MockLLM(responses=[json.dumps({"action": "apply_patch", "diff": diff})])
+
+    result = step(
+        conn,
+        task_id="t1",
+        envelope=envelope,
+        llm=llm,
+        worktree=ws,
+        task_description="corrupt workspace",
+    )
+
+    assert executed == []
+    assert result.run_state == "error"
+    assert _task(conn)["run_state"] == "error"
+    assert (ws / "a.txt").read_bytes() == b"other\n"
+
+
+def test_unstarted_window_resumes_first_apply_without_claim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "a.txt").write_bytes(b"before\n")
+    envelope = _patch_envelope()
+    conn = connect(tmp_path / "g.db")
+    _boot(conn, ws, envelope)
+    diff = _diff("before", "after")
+    _open_apply_window(
+        conn, envelope, diff, pre="before\n", post="after\n", started=False
+    )
+    claimed: list[object] = []
+    created: list[object] = []
+
+    def spy_claim(*args: object, **kwargs: object) -> str:
+        claimed.append(kwargs)
+        raise AssertionError("first apply must not claim")
+
+    def spy_create(*args: object, **kwargs: object) -> str:
+        created.append(kwargs)
+        raise AssertionError("must reuse consumed permit")
+
+    monkeypatch.setattr(engine_mod, "claim_recovered_attempt", spy_claim)
+    monkeypatch.setattr(engine_mod, "create_permit", spy_create)
+    llm = MockLLM(responses=[json.dumps({"action": "apply_patch", "diff": diff})])
+
+    result = step(
+        conn,
+        task_id="t1",
+        envelope=envelope,
+        llm=llm,
+        worktree=ws,
+        task_description="resume first apply",
+    )
+
+    assert claimed == []
+    assert created == []
+    assert (ws / "a.txt").read_bytes() == b"after\n"
+    assert result.observation is not None
+
+
+def test_engine_uses_public_preview_not_privates() -> None:
+    source = Path(engine_mod.__file__).read_text(encoding="utf-8")
+    assert "preview_patch" in source
+    for name in (
+        "_parse_diff",
+        "_apply_hunks",
+        "_involved_paths",
+        "_read_text",
+        "_mark_bytes",
+    ):
+        assert name not in source
