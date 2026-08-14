@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 import subprocess
 from pathlib import Path
@@ -113,7 +114,7 @@ def _setup_origin(tmp_path: Path) -> tuple[Path, Path, Path, str]:
         text=True,
     )
     (origin / "src").mkdir()
-    (origin / "src" / "app.py").write_text("print('ok')\n", encoding="utf-8")
+    (origin / "src" / "app.py").write_bytes(b"print('ok')\n")
     base = _commit(origin, "base")
     config_path = tmp_path / "guardedcoder" / "config.toml"
     config_path.parent.mkdir(parents=True)
@@ -498,3 +499,170 @@ def test_resume_mismatch_fails_closed_to_error(
     assert env_mismatch != 0
     assert conn.execute("SELECT run_state FROM tasks").fetchone()[0] == "error"
     assert len(llm.calls) == 1
+
+
+def _patch_src_diff() -> str:
+    return (
+        "--- a/src/app.py\n"
+        "+++ b/src/app.py\n"
+        "@@ -1,1 +1,1 @@\n"
+        "-print('ok')\n"
+        "+print('patched')\n"
+    )
+
+
+def test_approve_then_resume_executes_stored_patch_without_llm(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    origin, config_path, harness, _base = _setup_origin(tmp_path)
+    digest = _envelope_hash(config_path)
+    llm = RecordingLLM(
+        responses=[json.dumps({"action": "apply_patch", "diff": _patch_src_diff()})]
+    )
+    _need_approval(monkeypatch)
+    assert (
+        _run(
+            [
+                "run",
+                "--repo",
+                str(origin),
+                "--task",
+                "needs hitl",
+                "--confirm-envelope-hash",
+                digest,
+            ],
+            config_path=config_path,
+            harness=harness,
+            llm=llm,
+        )
+        == 0
+    )
+    out = capsys.readouterr().out
+    assert "task_id:" in out
+    assert "risk:" in out
+    assert "summary:" in out
+    assert "fingerprint:" in out
+    assert "apply_patch" in out
+    conn = _db(harness)
+    task_id = str(conn.execute("SELECT task_id FROM tasks").fetchone()[0])
+    fingerprint = str(
+        conn.execute(
+            "SELECT fingerprint FROM pending_actions WHERE task_id = ?",
+            (task_id,),
+        ).fetchone()[0]
+    )
+    worktree = Path(
+        conn.execute(
+            "SELECT worktree_identity FROM tasks WHERE task_id = ?",
+            (task_id,),
+        ).fetchone()[0]
+    )
+    assert (worktree / "src" / "app.py").read_bytes() == b"print('ok')\n"
+    assert len(llm.calls) == 1
+
+    assert (
+        _run(
+            ["approve", task_id, fingerprint],
+            config_path=config_path,
+            harness=harness,
+            llm=llm,
+        )
+        == 0
+    )
+    assert len(llm.calls) == 1
+    assert (worktree / "src" / "app.py").read_bytes() == b"print('ok')\n"
+
+    assert (
+        _run(
+            ["resume", task_id, fingerprint],
+            config_path=config_path,
+            harness=harness,
+            llm=llm,
+        )
+        == 0
+    )
+    assert len(llm.calls) == 1
+    assert (worktree / "src" / "app.py").read_bytes() == b"print('patched')\n"
+    permit_fp = str(
+        conn.execute(
+            "SELECT fingerprint FROM permits WHERE task_id = ?",
+            (task_id,),
+        ).fetchone()[0]
+    )
+    assert permit_fp == fingerprint
+    replay = _run(
+        ["resume", task_id, fingerprint],
+        config_path=config_path,
+        harness=harness,
+        llm=BoomLLM(),
+    )
+    assert replay != 0
+
+
+def test_reject_feeds_observation_and_original_task_on_next_step(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    origin, config_path, harness, _base = _setup_origin(tmp_path)
+    digest = _envelope_hash(config_path)
+    llm = RecordingLLM(
+        responses=[
+            '{"action":"list_dir","path":"src"}',
+            '{"action":"list_dir","path":"src"}',
+        ]
+    )
+    _need_approval(monkeypatch)
+    assert (
+        _run(
+            [
+                "run",
+                "--repo",
+                str(origin),
+                "--task",
+                "needs hitl",
+                "--confirm-envelope-hash",
+                digest,
+            ],
+            config_path=config_path,
+            harness=harness,
+            llm=llm,
+        )
+        == 0
+    )
+    capsys.readouterr()
+    conn = _db(harness)
+    task_id = str(conn.execute("SELECT task_id FROM tasks").fetchone()[0])
+    fingerprint = str(
+        conn.execute(
+            "SELECT fingerprint FROM pending_actions WHERE task_id = ?",
+            (task_id,),
+        ).fetchone()[0]
+    )
+    assert (
+        _run(
+            ["reject", task_id, fingerprint],
+            config_path=config_path,
+            harness=harness,
+            llm=BoomLLM(),
+        )
+        == 0
+    )
+    monkeypatch.undo()
+    assert (
+        _run(
+            ["resume", task_id, fingerprint],
+            config_path=config_path,
+            harness=harness,
+            llm=llm,
+        )
+        == 0
+    )
+    capsys.readouterr()
+    assert len(llm.calls) == 2
+    blob = json.dumps(llm.calls[1])
+    assert "needs hitl" in blob
+    lowered = blob.lower()
+    assert "reject" in lowered or "denied" in lowered

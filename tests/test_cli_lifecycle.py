@@ -338,6 +338,12 @@ def test_discard_takes_only_task_id_and_rejects_path_arg(
     )
     capsys.readouterr()
     assert not worktree.exists()
+    row = conn.execute(
+        "SELECT run_state, artifact_state FROM tasks WHERE task_id = ?",
+        (task_id,),
+    ).fetchone()
+    assert row[0] == "succeeded"
+    assert row[1] == "discarded"
 
 
 def test_memory_clear_requires_repo_id_and_secret_write_is_redacted(
@@ -359,7 +365,7 @@ def test_memory_clear_requires_repo_id_and_secret_write_is_redacted(
             "--repo-id",
             "repo-a",
             "--type",
-            "constraint",
+            "project_constraint",
             "--content",
             "Use pytest.",
         ],
@@ -450,3 +456,150 @@ def test_memory_clear_requires_repo_id_and_secret_write_is_redacted(
     assert cleared == 0
     assert conn.execute("SELECT COUNT(*) FROM memory_records").fetchone()[0] == 0
     assert origin.is_dir()
+
+
+def test_memory_type_accepts_constraint_alias(tmp_path: Path) -> None:
+    origin, config_path, harness = _setup_origin(tmp_path)
+    ns = parse_args(
+        [
+            "memory",
+            "add",
+            "--repo-id",
+            "repo-a",
+            "--type",
+            "project_constraint",
+            "--content",
+            "Use pytest.",
+        ]
+    )
+    assert ns.type == "project_constraint"
+    code = _run(
+        [
+            "memory",
+            "add",
+            "--repo-id",
+            "repo-a",
+            "--type",
+            "constraint",
+            "--content",
+            "Alias still works.",
+        ],
+        config_path=config_path,
+        harness=harness,
+        llm=BoomLLM(),
+    )
+    assert code == 0
+    conn = _db(harness)
+    types = {
+        str(row[0])
+        for row in conn.execute("SELECT record_type FROM memory_records")
+    }
+    assert "project_constraint" in types
+    del origin
+
+
+def _seed_applying(
+    tmp_path: Path, *, origin_body: bytes
+) -> tuple[Path, Path, Path, str]:
+    from guardedcoder.persist.store import create_task
+    from guardedcoder.workspace.apply_back import enter_applying, preview_apply
+    from guardedcoder.workspace.worktree import create_task_worktree
+
+    origin, config_path, harness = _setup_origin(tmp_path)
+    base = _git(origin, "rev-parse", "HEAD")
+    ownership = create_task_worktree(
+        task_id="task-apply",
+        repo_path=origin,
+        base_commit=base,
+        harness_dir=harness,
+    )
+    (ownership.worktree_path / "tracked.txt").write_bytes(b"patched\n")
+    conn = connect(harness / "guardedcoder.db")
+    create_task(
+        conn,
+        task_id="task-apply",
+        run_state="succeeded",
+        artifact_state="patch_ready",
+        repo_path=str(origin.resolve()),
+        base_commit=base,
+        worktree_identity=str(ownership.worktree_path),
+        envelope_hash="env-apply",
+        remaining_steps=3,
+    )
+    artifact = GitPatchArtifactPort(artifact_dir=harness / "artifacts").export(
+        type(
+            "Task",
+            (),
+            {
+                "task_id": "task-apply",
+                "worktree_identity": str(ownership.worktree_path),
+                "base_commit": base,
+                "max_patch_bytes": 1_000_000,
+            },
+        )()
+    )
+    preview = preview_apply(
+        conn, task_id="task-apply", expected_revision=1, artifact=artifact
+    )
+    enter_applying(conn, preview)
+    (origin / "tracked.txt").write_bytes(origin_body)
+    return origin, config_path, harness, "task-apply"
+
+
+def test_apply_recover_applied_is_success(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    origin, config_path, harness, task_id = _seed_applying(
+        tmp_path, origin_body=b"patched\n"
+    )
+    code = _run(
+        ["apply", task_id],
+        config_path=config_path,
+        harness=harness,
+        llm=BoomLLM(),
+    )
+    out = capsys.readouterr().out.lower()
+    assert code == 0
+    assert "applied" in out
+    assert "needs_reconfirm" not in out
+    assert (origin / "tracked.txt").read_bytes() == b"patched\n"
+
+
+def test_apply_recover_needs_reconfirm_is_not_success(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    origin, config_path, harness, task_id = _seed_applying(
+        tmp_path, origin_body=b"base\n"
+    )
+    code = _run(
+        ["apply", task_id],
+        config_path=config_path,
+        harness=harness,
+        llm=BoomLLM(),
+    )
+    captured = capsys.readouterr()
+    blob = (captured.out + captured.err).lower()
+    assert code != 0
+    assert "applied" not in blob.split("needs_reconfirm")[0] or "needs_reconfirm" in blob
+    assert "needs_reconfirm" in blob
+    assert (origin / "tracked.txt").read_bytes() == b"base\n"
+
+
+def test_apply_recover_cleanup_error_is_nonzero_and_warns(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    origin, config_path, harness, task_id = _seed_applying(
+        tmp_path, origin_body=b"partial\n"
+    )
+    code = _run(
+        ["apply", task_id],
+        config_path=config_path,
+        harness=harness,
+        llm=BoomLLM(),
+    )
+    captured = capsys.readouterr()
+    blob = (captured.out + captured.err).lower()
+    assert code != 0
+    assert "cleanup_error" in blob or "partial" in blob
+    assert "origin" in blob
+    assert (origin / "tracked.txt").read_bytes() == b"partial\n"

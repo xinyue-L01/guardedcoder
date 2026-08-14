@@ -15,11 +15,13 @@ from guardedcoder.config.synthesize import synthesize_envelope
 from guardedcoder.errors import (
     ApprovalError,
     ConfigError,
+    ExecutionWindowOpenError,
     PendingConsumedError,
+    PermitInvalidError,
     StaleRevisionError,
 )
 from guardedcoder.llm.openai_compat import OpenAICompatibleLLM
-from guardedcoder.loop.engine import step
+from guardedcoder.loop.engine import execute_approved, step
 from guardedcoder.memory.store import (
     MemoryValidationError,
     add_constraint,
@@ -30,12 +32,14 @@ from guardedcoder.memory.store import (
 )
 from guardedcoder.models.config import AppConfig
 from guardedcoder.models.envelope import Envelope
+from guardedcoder.models.observation import Observation
 from guardedcoder.persist.approval import approve, reject
 from guardedcoder.persist.db import connect
 from guardedcoder.persist.store import create_task, update_task
 from guardedcoder.persist.txn import write_txn
 from guardedcoder.workspace.apply_back import (
     ApplyBackError,
+    ApplyRecoverDecision,
     confirm_apply,
     preview_apply,
     recover_apply,
@@ -51,7 +55,11 @@ from guardedcoder.workspace.worktree import (
 
 _PAUSED = frozenset({"awaiting_approval", "awaiting_envelope_revision"})
 _OK_STOP = frozenset({"succeeded", "unverified", *_PAUSED})
-_USER_MEMORY_TYPES = frozenset({"constraint", "decision"})
+_USER_MEMORY_TYPES = {
+    "constraint": "constraint",
+    "project_constraint": "constraint",
+    "decision": "decision",
+}
 
 
 class LifecycleError(RuntimeError):
@@ -140,6 +148,8 @@ def handle_command(
         OwnershipError,
         ApprovalError,
         PendingConsumedError,
+        PermitInvalidError,
+        ExecutionWindowOpenError,
         ApplyBackError,
         MemoryValidationError,
         StaleRevisionError,
@@ -224,6 +234,14 @@ def _save_envelope(conn, task_id: str, envelope: Envelope) -> None:
         )
 
 
+def _freeze(value: object) -> object:
+    if isinstance(value, dict):
+        return {key: _freeze(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return tuple(_freeze(item) for item in value)
+    return value
+
+
 def _load_envelope(conn, task_id: str, envelope_hash: str) -> Envelope:
     row = conn.execute(
         "SELECT snapshot_json FROM envelope_versions "
@@ -234,7 +252,7 @@ def _load_envelope(conn, task_id: str, envelope_hash: str) -> Envelope:
         raise LifecycleError("stored envelope snapshot mismatch")
     payload = json.loads(str(row[0]))
     payload.pop("envelope_hash", None)
-    return Envelope.model_validate(payload)
+    return Envelope.model_validate(_freeze(payload))
 
 
 def _set_error(conn, task_id: str) -> None:
@@ -261,10 +279,99 @@ def _pending_for(conn, task_id: str, fingerprint: str | None = None):
     ).fetchone()
 
 
-def _print_hitl(task_id: str, fingerprint: str) -> None:
+def _print_hitl(task_id: str, fingerprint: str, action: object | None = None) -> None:
+    summary = ""
+    if action is not None:
+        dumped = getattr(action, "model_dump", lambda **_k: {"action": str(action)})(
+            mode="json"
+        )
+        summary = json.dumps(dumped, sort_keys=True, separators=(",", ":"))
     print(f"task_id: {task_id}")
+    print("risk: NeedApproval")
+    print(f"summary: {summary}")
     print(f"fingerprint: {fingerprint}")
-    print("run_state: awaiting_approval")
+
+
+def _save_runtime(
+    conn,
+    task_id: str,
+    *,
+    task_description: str,
+    observations: list[object] | None = None,
+    memories: list[object] | None = None,
+) -> None:
+    obs_payload = []
+    for item in observations or ():
+        if hasattr(item, "model_dump"):
+            obs_payload.append(item.model_dump(mode="json"))
+        else:
+            obs_payload.append({"body": str(item), "truncated": False})
+    mem_payload = []
+    for item in memories or ():
+        if hasattr(item, "model_dump"):
+            mem_payload.append(item.model_dump(mode="json"))
+        else:
+            mem_payload.append({"content": str(item)})
+    with write_txn(conn):
+        conn.execute(
+            "INSERT INTO task_runtime ("
+            "task_id, task_description, observations_json, memories_json) "
+            "VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(task_id) DO UPDATE SET "
+            "task_description = excluded.task_description, "
+            "observations_json = excluded.observations_json, "
+            "memories_json = excluded.memories_json",
+            (
+                task_id,
+                task_description,
+                json.dumps(obs_payload, ensure_ascii=False),
+                json.dumps(mem_payload, ensure_ascii=False),
+            ),
+        )
+
+
+def _load_runtime(conn, task_id: str) -> tuple[str, tuple[Observation, ...], tuple[object, ...]]:
+    row = conn.execute(
+        "SELECT task_description, observations_json, memories_json "
+        "FROM task_runtime WHERE task_id = ?",
+        (task_id,),
+    ).fetchone()
+    if row is None:
+        return "", (), ()
+    observations = []
+    for item in json.loads(str(row[1]) or "[]"):
+        if isinstance(item, dict) and "body" in item:
+            observations.append(
+                Observation(
+                    body=str(item["body"]),
+                    truncated=bool(item.get("truncated", False)),
+                )
+            )
+    memories = tuple(json.loads(str(row[2]) or "[]"))
+    return str(row[0] or ""), tuple(observations), memories
+
+
+def _as_observation(item: object) -> Observation:
+    if isinstance(item, Observation):
+        return item
+    body = getattr(item, "body", None)
+    if body is None:
+        body = getattr(item, "stdout", str(item))
+    return Observation(
+        body=str(body),
+        truncated=bool(getattr(item, "truncated", False)),
+    )
+
+
+def _append_observation(conn, task_id: str, observation: object) -> None:
+    description, observations, memories = _load_runtime(conn, task_id)
+    _save_runtime(
+        conn,
+        task_id,
+        task_description=description,
+        observations=[*observations, _as_observation(observation)],
+        memories=list(memories),
+    )
 
 
 def _run_steps(
@@ -281,6 +388,9 @@ def _run_steps(
     task_dir = harness / "tasks" / task_id
     cap = max(_task_row(conn, task_id)["remaining_steps"], 1) + 1
     last_state = _task_row(conn, task_id)["run_state"]
+    description, observations, memories = _load_runtime(conn, task_id)
+    if not description:
+        description = task_description
     for _ in range(cap):
         task = _task_row(conn, task_id)
         if task["run_state"] != "running":
@@ -291,15 +401,20 @@ def _run_steps(
             envelope=envelope,
             llm=llm,
             worktree=worktree,
-            task_description=task_description,
+            task_description=description,
+            observations=observations,
+            memories=memories,
             task_dir=task_dir,
             patch_port=port,
         )
         last_state = result.run_state
+        if result.observation is not None:
+            _append_observation(conn, task_id, result.observation)
+            description, observations, memories = _load_runtime(conn, task_id)
         if result.run_state in _PAUSED:
             pending = _pending_for(conn, task_id)
             if pending is not None:
-                _print_hitl(task_id, str(pending[1]))
+                _print_hitl(task_id, str(pending[1]), result.action)
             return result.run_state
         if result.run_state != "running":
             return result.run_state
@@ -356,6 +471,8 @@ def _handle_run(
         remaining_steps=envelope.max_steps,
     )
     _save_envelope(conn, task_id, envelope)
+    task_description = getattr(args, "task", "") or ""
+    _save_runtime(conn, task_id, task_description=task_description)
     print(f"task_id: {task_id}")
     state = _run_steps(
         conn,
@@ -363,7 +480,7 @@ def _handle_run(
         envelope=envelope,
         llm=_build_llm(config, key_store, llm),
         worktree=ownership.worktree_path,
-        task_description=getattr(args, "task", "") or "",
+        task_description=task_description,
         harness=harness,
     )
     return 0 if state in _OK_STOP else 1
@@ -379,6 +496,11 @@ def _handle_approve(args: Namespace, *, harness: Path) -> int:
 def _handle_reject(args: Namespace, *, harness: Path) -> int:
     conn = _connect(harness)
     reject(conn, args.task_id, args.fingerprint)
+    _append_observation(
+        conn,
+        args.task_id,
+        Observation(body="rejected: action denied by user", truncated=False),
+    )
     print(f"rejected: {args.task_id}")
     return 0
 
@@ -440,21 +562,51 @@ def _handle_resume(
         _set_error(conn, task_id)
         print(str(exc))
         return 1
-    if task["run_state"] == "awaiting_approval":
-        update_task(conn, task_id, task["state_revision"], run_state="running")
-        task = _task_row(conn, task_id)
     envelope = _load_envelope(conn, task_id, task["envelope_hash"])
+    pending = _pending_for(conn, task_id, args.fingerprint)
+    if pending is None:
+        _set_error(conn, task_id)
+        print("pending fingerprint mismatch")
+        return 1
+    if task["run_state"] in {"awaiting_approval", "executing_action"}:
+        result = execute_approved(
+            conn,
+            task_id=task_id,
+            envelope=envelope,
+            pending_action_id=str(pending[0]),
+            worktree=Path(task["worktree_identity"]),
+            task_dir=harness / "tasks" / task_id,
+        )
+        if result.observation is not None:
+            _append_observation(conn, task_id, result.observation)
+        return 0 if result.run_state in (_OK_STOP | {"running"}) else 1
+    already = conn.execute(
+        "SELECT 1 FROM permits WHERE pending_action_id = ?",
+        (pending[0],),
+    ).fetchone()
+    if already is not None:
+        raise LifecycleError("approved action already executed")
     config = load_app_config(config_file)
-    state = _run_steps(
+    description, observations, memories = _load_runtime(conn, task_id)
+    result = step(
         conn,
         task_id=task_id,
         envelope=envelope,
         llm=_build_llm(config, key_store, llm),
         worktree=Path(task["worktree_identity"]),
-        task_description="",
-        harness=harness,
+        task_description=description,
+        observations=observations,
+        memories=memories,
+        task_dir=harness / "tasks" / task_id,
+        patch_port=_patch_port(harness),
     )
-    return 0 if state in _OK_STOP else 1
+    if result.observation is not None:
+        _append_observation(conn, task_id, result.observation)
+    if result.run_state in _PAUSED:
+        nxt = _pending_for(conn, task_id)
+        if nxt is not None:
+            _print_hitl(task_id, str(nxt[1]), result.action)
+    return 0 if result.run_state in (_OK_STOP | {"running"}) else 1
 
 
 def _handle_apply(args: Namespace, *, harness: Path) -> int:
@@ -462,14 +614,20 @@ def _handle_apply(args: Namespace, *, harness: Path) -> int:
     task = _task_row(conn, args.task_id)
     origin = Path(task["repo_path"])
     if task["artifact_state"] == "applying":
-        recover_apply(
+        decision = recover_apply(
             conn,
             task_id=args.task_id,
             expected_revision=task["state_revision"],
             origin=origin,
         )
-        print("apply recovered")
-        return 0
+        if decision is ApplyRecoverDecision.applied:
+            print("applied")
+            return 0
+        if decision is ApplyRecoverDecision.needs_reconfirm:
+            print("needs_reconfirm")
+            return 1
+        print("cleanup_error: origin may be partially changed")
+        return 1
     port = _patch_port(harness)
     artifact = port.export(
         SimpleNamespace(
@@ -495,7 +653,15 @@ def _handle_apply(args: Namespace, *, harness: Path) -> int:
 
 
 def _handle_discard(args: Namespace, *, harness: Path) -> int:
+    conn = _connect(harness)
+    task = _task_row(conn, args.task_id)
     discard_owned_worktree(args.task_id, harness_dir=harness)
+    update_task(
+        conn,
+        args.task_id,
+        task["state_revision"],
+        artifact_state="discarded",
+    )
     print(f"discarded: {args.task_id}")
     return 0
 
@@ -509,8 +675,8 @@ def _handle_memory(args: Namespace, *, harness: Path) -> int:
         raise LifecycleError("memory commands require --repo-id")
     conn = _connect(harness)
     if action == "add":
-        record_type = args.type
-        if record_type not in _USER_MEMORY_TYPES:
+        record_type = _USER_MEMORY_TYPES.get(args.type)
+        if record_type is None:
             raise LifecycleError("users may only write project_constraint or decision")
         paths = tuple(getattr(args, "path", None) or ())
         tags = tuple(getattr(args, "tag", None) or ())
