@@ -15,7 +15,7 @@
 - TDD：先红后绿；保存红灯证据。
 - 每个实现 task 一个新鲜 subagent；commit/PR 注明来源与人工修改。
 - 每个大模块一个 worktree / PR；**worktree 必须从依赖 PR 已合并的最新 `main` 创建**，禁止一次性从旧 base 开全部 worktree。
-- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。PR-H 已合入 main。PR-K T36–T37 已在 `feat/k-cli` 实现（以状态表为准）。下一实现 task 为 T38。
+- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。PR-H 已合入 main。PR-K T36–T38 已在 `feat/k-cli` 实现（以状态表为准）。下一动作：合并 PR-K；下一实现 task 为 T39。
 - API Key 只进 keyring；不进 TOML/Git/日志/状态/记忆/Mock。
 - 五工具 + `finish`；不为演示新增 network/push/publish。
 - 完整 patch 禁止静默截断。
@@ -91,7 +91,7 @@ Human edits: <none|简述>
 | T35 | 不授权、summary、100/90 清理 | done | 24e4063eccede65776808992ac00873362a819b8 | WT-J / PR-J |
 | T36 | argparse CLI | done | 0e47134531276623564e31574730342ae7d386d4 | WT-K / PR-K |
 | T37 | config / auth | done | 523f86206a89271d5fdb2a4bb9d0032b431b01e7 | WT-K / PR-K |
-| T38 | run/HITL/apply/discard/memory CLI | pending | — | WT-K / PR-K |
+| T38 | run/HITL/apply/discard/memory CLI | done | 07f6f4adb7be481a36ce055e2f437e1e208ba82c | WT-K / PR-K |
 | T39 | 机制演示 | pending | — | WT-L / PR-L |
 | T40 | 秘密扫描脚本（先于 CI） | done | ed0c8472335ba953cba7713731a5295d214c394d | WT-M / PR-M |
 | T41 | GitHub Actions + GitLab unit-test | done | e757a9d47700dc9928c79e77b2e217106f7cdefc | WT-M / PR-M（同分支，T40 之后） |
