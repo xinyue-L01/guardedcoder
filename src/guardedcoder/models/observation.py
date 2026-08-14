@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import re
-
 from pydantic import BaseModel, ConfigDict, field_validator
 
-_KEY_SHAPED = re.compile(r"(?<![A-Za-z])sk-[A-Za-z0-9_-]+")
+from guardedcoder.security.redact import redact_text
 
 
 class Observation(BaseModel):
@@ -18,4 +16,4 @@ class Observation(BaseModel):
     @field_validator("body")
     @classmethod
     def _redact_key_shaped_text(cls, value: str) -> str:
-        return _KEY_SHAPED.sub("***", value)
+        return redact_text(value, replacement="***")

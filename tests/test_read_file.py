@@ -82,6 +82,23 @@ def test_observation_redacts_key_shaped_body() -> None:
     assert fake_key not in result.body
 
 
+@pytest.mark.parametrize(
+    "body, secret",
+    [
+        ("api_key=provider-opaque-value-123", "provider-opaque-value-123"),
+        ("Authorization: Bearer opaque.jwt.token", "opaque.jwt.token"),
+        ("password: correct-horse-battery-staple", "correct-horse-battery-staple"),
+    ],
+)
+def test_observation_redacts_non_openai_provider_secrets(
+    body: str, secret: str
+) -> None:
+    result = Observation(body=body, truncated=False)
+
+    assert secret not in result.body
+    assert "***" in result.body
+
+
 def test_read_file_line_range_reads_past_initial_byte_window(tmp_path: Path) -> None:
     prefix = ("x" * 80 + "\n") * 900
     (tmp_path / "deep.txt").write_bytes((prefix + "wanted\n").encode())

@@ -471,5 +471,14 @@
 - **Verification:** full suite `211 passed, 2 skipped`; secret scan clean (78 files); wheel build passed; a fresh Windows Python 3.12 environment installed `requirements-dev.txt` with `--require-hashes` successfully.
 - **Human edits:** Codex integration fix requested and approved by the project owner.
 
+---
+
+## 2026-08-14 · Codex PR-F credential-redaction follow-up
+
+- **Trigger:** integration review found that Observation and audit redaction only recognized `sk-` credentials.
+- **Change:** introduced a shared sanitizer for common provider tokens, labeled opaque secrets, Bearer authorization values, and private-key material; Observation uses a bounded short replacement while audit uses `[redacted]`.
+- **Red/green:** the first implementation exposed an Observation byte-budget regression (`1 failed, 19 passed`); the bounded replacement fixed it. Targeted `20 passed`; full suite `284 passed, 4 skipped`; secret scan clean (95 files).
+- **Human edits:** Codex integration fix requested and approved by the project owner.
+
 
 
