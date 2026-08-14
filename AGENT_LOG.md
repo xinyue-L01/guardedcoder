@@ -652,3 +652,50 @@
 - **全量：** **400 passed, 4 skipped**。
 - **实现 commit：** `925eaee023442f3376bc5b7d1c197a872717c16f`
 - **Minor 未修：** 整段正则非 Verdict 解析；只门控二次+ apply_patch；kv 形态比 JSON 松。
+
+---
+
+## 2026-08-14 · T36 argparse CLI（WT-K）
+
+- **Task：** T36 argparse 骨架。未执行 T37。未合并 PR-K。
+- **Implementer：** `6b111e5d`（feat `0e47134`）。
+- **Spec reviewer：** `e0699ff1` C=0 I=0。
+- **Quality reviewer：** `f76ae68b` C=0 I=0。
+- **Human edits：** none。
+- **红灯：** `tests/test_cli_parse.py` collection 1 error（无 `guardedcoder.cli`）。
+- **绿灯：** targeted **20 passed**。
+- **全量：** **423 passed, 4 skipped**。
+- **实现 commit：** `0e47134531276623564e31574730342ae7d386d4`
+- **Minor 未修：** `print_usage` 未 redact；`auth`/`config`/`memory` 嵌套留给 T37/T38。
+
+---
+
+## 2026-08-14 · T37 config / auth（WT-K）
+
+- **Task：** T37 config 与 auth。未执行 T38。未合并 PR-K。
+- **Implementer：** `3c1c9d6a`（feat `d501137`；fix `523f862`）。
+- **Spec reviewer：** 初审 `f667a858` C=0 I=2；复审 `75676599` C=0 I=0。
+- **Quality reviewer：** 初审 `797d6873` C=0 I=1；复审 `dd1d9f19` C=0 I=0。
+- **Human edits：** none。
+- **红灯：** 初实现无 `guardedcoder.auth`；fix 轮 4 failed。
+- **绿灯：** targeted 48 passed（parse+config_auth）。
+- **全量：** **451 passed, 4 skipped**。
+- **实现 commit：** `d501137dca6d0082fa690cfa7f0d392b1e047965`
+- **修复 commit：** `523f86206a89271d5fdb2a4bb9d0032b431b01e7`
+- **Minor 未修：** Windows 二次 clear 可能过严；多余参数脱敏作用于全部子命令。
+
+---
+
+## 2026-08-14 · T38 产品 CLI 集成（WT-K）
+
+- **Task：** T38 run/HITL/apply/discard/memory。未执行 T39。未合并 PR-K。
+- **Implementer：** `c502d4dd`（feat `d3e2605`；HITL fix `943f3f7`；continue `26be8b8`；cap-exhaust `07f6f4a`）；分支修 `6df4f932`（`45041f7`）。
+- **Spec reviewer：** 初审 `a8121798` C=1 I=5；复审 `fb8e8aac` C=0 I=0；分支 C1/I1 复审 `bb2b6e96` C=0 I=0。
+- **Quality reviewer：** 初审 `f0ffc9e8` C=1 I=4；复审 `b6ebdb80` C=0 I=0；分支复审 `3ace1896` C=0 I=0。
+- **Human edits：** none。
+- **红灯：** 初实现 13 failed；HITL fix 7 failed；continue 2 failed；cap-exhaust 1 failed；分支 C1/I1 见 `prk-branch-fix-red.txt`。
+- **绿灯：** CLI 相关 targeted 通过。
+- **全量：** **475 passed, 4 skipped**。
+- **实现 commit：** `d3e26059001b40d47cfb0829067f63ef18e2fc11`
+- **修复 commits：** `943f3f7` `26be8b8` `07f6f4a` `45041f7`
+- **Minor 未修：** reject 后 resume 只跑一步；HITL risk 固定 NeedApproval；run 不 retrieve/gc_task_summaries。

@@ -108,6 +108,13 @@ CREATE INDEX IF NOT EXISTS idx_memory_repo_status_type
 
 CREATE INDEX IF NOT EXISTS idx_memory_repo_created
     ON memory_records(repo_id, created_at, record_id);
+
+CREATE TABLE IF NOT EXISTS task_runtime (
+    task_id TEXT PRIMARY KEY REFERENCES tasks(task_id),
+    task_description TEXT NOT NULL DEFAULT '',
+    observations_json TEXT NOT NULL DEFAULT '[]',
+    memories_json TEXT NOT NULL DEFAULT '[]'
+);
 """
 
 

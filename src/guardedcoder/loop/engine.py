@@ -441,6 +441,152 @@ def _finish(
     )
 
 
+def execute_approved(
+    conn: sqlite3.Connection,
+    *,
+    task_id: str,
+    envelope: Envelope,
+    pending_action_id: str,
+    worktree: Path,
+    task_dir: Path | None = None,
+) -> StepResult:
+    pending = conn.execute(
+        "SELECT pending_action_id, fingerprint, normalized_action_json, "
+        "state_revision, consumed FROM pending_actions "
+        "WHERE pending_action_id = ?",
+        (pending_action_id,),
+    ).fetchone()
+    if pending is None or not pending[4]:
+        raise PermitInvalidError(
+            f"pending action {pending_action_id} is not a consumed approval"
+        )
+    action = parse_llm_response(str(pending[2]))
+    if isinstance(action, FinishAction) or type(action) not in _ACTION_KIND:
+        raise PermitInvalidError("approved action cannot be executed")
+    task = _task_row(conn, task_id)
+    fingerprint = _fingerprint(task, envelope, action)
+    if fingerprint != str(pending[1]):
+        raise PermitInvalidError(
+            f"fingerprint mismatch for approved action {pending_action_id}"
+        )
+    kind = _ACTION_KIND[type(action)]
+    window = _active_window(conn, task_id)
+    if (
+        window is not None
+        and window["execution_started"]
+        and window["action_kind"] == "run_command"
+    ):
+        raise ExecutionWindowOpenError(
+            f"refusing to auto-rerun started run_command for task {task_id}"
+        )
+    if (
+        window is not None
+        and isinstance(action, ApplyPatchAction)
+        and window["execution_started"]
+        and window["action_kind"] == "apply_patch"
+    ):
+        observation = _retry_started_patch(
+            conn,
+            task_id=task_id,
+            envelope=envelope,
+            action=action,
+            worktree=worktree,
+            window=window,
+            task_dir=task_dir,
+        )
+        still = _active_window(conn, task_id)
+        if still is not None and still["window_id"] == window["window_id"]:
+            _complete_window(conn, task_id=task_id, window_id=window["window_id"])
+        return StepResult(
+            action=action,
+            observation=observation,
+            run_state=_task_row(conn, task_id)["run_state"],
+        )
+    if (
+        window is not None
+        and not window["execution_started"]
+        and window["action_kind"] == kind
+    ):
+        _require_matching_fingerprint(
+            conn,
+            task=task,
+            envelope=envelope,
+            action=action,
+            permit_id=window["permit_id"],
+        )
+        try:
+            observation = execute(
+                conn,
+                task_id=task_id,
+                permit_id=window["permit_id"],
+                window_id=window["window_id"],
+                action=action,
+                worktree=worktree,
+                task_dir=task_dir,
+                envelope=envelope,
+            )
+        except Exception:
+            _fail_close_window(
+                conn, task_id=task_id, window_id=window["window_id"]
+            )
+            raise
+        _complete_window(conn, task_id=task_id, window_id=window["window_id"])
+        return StepResult(
+            action=action,
+            observation=observation,
+            run_state=_task_row(conn, task_id)["run_state"],
+        )
+    if window is not None:
+        raise ExecutionWindowOpenError(
+            f"task {task_id} already has an active execution window"
+        )
+
+    preimage = postimage = None
+    if isinstance(action, ApplyPatchAction):
+        preimage, postimage = preview_patch(
+            worktree, action.diff, allow_delete=envelope.allow_delete
+        )
+    permit_id = create_permit(
+        conn,
+        task_id=task_id,
+        action_id=str(uuid.uuid4()),
+        fingerprint=fingerprint,
+        envelope_hash=envelope.envelope_hash,
+        expected_revision=task["state_revision"],
+        pending_action_id=pending_action_id,
+    )
+    task = _task_row(conn, task_id)
+    window_id = consume_permit_and_open_window(
+        conn,
+        task_id=task_id,
+        permit_id=permit_id,
+        expected_revision=task["state_revision"],
+        action_kind=kind,
+        preimage=preimage,
+        postimage=postimage,
+    )
+    try:
+        observation = execute(
+            conn,
+            task_id=task_id,
+            permit_id=permit_id,
+            window_id=window_id,
+            action=action,
+            worktree=worktree,
+            task_dir=task_dir,
+            envelope=envelope,
+        )
+    except Exception:
+        _fail_close_window(conn, task_id=task_id, window_id=window_id)
+        raise
+    _complete_window(conn, task_id=task_id, window_id=window_id)
+    return StepResult(
+        action=action,
+        observation=observation,
+        run_state=_task_row(conn, task_id)["run_state"],
+    )
+
+
 def step(
     conn: sqlite3.Connection,
     *,
