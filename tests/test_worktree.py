@@ -228,6 +228,30 @@ def test_discard_refuses_tampered_ownership_record_without_deleting(
     assert repo.exists()
 
 
+def test_discard_refuses_symlink_or_junction_alias_before_removal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo, base_commit = _repo(tmp_path)
+    harness = tmp_path / "harness"
+    ownership = create_task_worktree(
+        task_id="task-31",
+        repo_path=repo,
+        base_commit=base_commit,
+        harness_dir=harness,
+    )
+    monkeypatch.setattr(
+        "guardedcoder.workspace.discard._path_is_alias",
+        lambda path: path == ownership.worktree_path,
+    )
+
+    with pytest.raises(OwnershipError, match="symlink or junction"):
+        discard_owned_worktree("task-31", harness_dir=harness)
+
+    assert ownership.worktree_path.exists()
+    assert ownership_record_path("task-31", harness_dir=harness).exists()
+    assert repo.exists()
+
+
 def test_discard_owned_worktree_cleans_after_head_moves(tmp_path: Path) -> None:
     repo, base_commit = _repo(tmp_path)
     harness = tmp_path / "harness"

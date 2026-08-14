@@ -427,5 +427,120 @@
 - **红灯：** `my file.txt` 被拆成 `file.txt`；`"a/\344\270\255..."` 被解成 `344270255....txt`，全 pre recover 误标 applied。
 - **绿灯：** `tests/test_apply_back.py` **16 passed**；全量 **217 passed, 2 skipped**。
 - **Follow-up commit：** `ec33655b6b38eaf33da7c30e2251cad5ad049e7a`
+---
+
+## 2026-08-14 · T21 只读文件工具（WT-F）
+
+- **Task：** T21（WT-F / `feat/f-tools`）。未执行 T22（本条仅 T21）。
+- **Implementer：** 原实现 `bf019fe`；续跑 owner `8f380e59-0ee8-47a9-b0f6-2f489643fe08`
+- **Spec reviewer：** 初审 `2759c690` C=0 I=2；复审 `de375c50` C=0 I=2；终审 `e7bef377` C=0 I=0 Approved。
+- **Quality reviewer：** 前轮 `0ccafa24` C=2 I=4；复审 `9520c5d5`（head `3dcf1d7`）C=0 I=4，其中 I1/I4 已在 `e5a085b` 修；I2 大文件提前 return、I3 截断 UTF-8 丢前缀、空 query 在后续 fix 修。
+- **Human edits：** none
+- **红灯：** 缺失模块 / 行范围 / `.env` 名 / `read_paths` / `.git`（`.superpowers/sdd/t21-red.txt`、`t21-fix-red.txt`）
+- **绿灯：** T21 目标 26+；全量当时 **206 passed, 2 skipped**；后续累计见 T24。
+- **实现 commit：** `bf019feeda436e200cbe1f173904c4c591e2634d`
+- **修复 commits：** `3dcf1d72cbd2797c3c4b780cab4449e684b028fe`；`e5a085b6b8b794381b5db83e72b152be50f0aac5`；`27fd75d`（空 query、大文件不中断后续命中、截断 UTF-8 保留前缀）
+
+---
+
+## 2026-08-14 · T22 apply_patch 管线（WT-F）
+
+- **Task：** T22。未执行 T23（本条仅 T22）。
+- **Implementer：** `8f380e59-0ee8-47a9-b0f6-2f489643fe08`
+- **Spec reviewer：** 初审 `0538683d` C=1 I=2；终审 `670c0e6f` C=0 I=0。
+- **Quality reviewer：** `6db4ea3b` C=2 I=4（空行 hunk、纯 rename、回滚、nofollow、覆盖）；`\ No newline` 在 `-` 行后误剥已在后续 fix 修。
+- **Human edits：** none
+- **红灯：** `ImportError: PatchError`（`.superpowers/sdd/t22-red.txt`）
+- **绿灯：** `test_apply_patch` 7 passed / 1 skipped；全量当时 **213 passed, 3 skipped**
+- **实现 commit：** `b1794699ed25c1d6f2b457105be5a89964d19eca`
+- **修复 commit：** `fef178488696bf09f7e5a7f6a22b827da48bf622`；`27fd75d`（`-` 行后 `\\ No newline` 不剥上一行）
+
+---
+
+## 2026-08-14 · T23 run_command + `{junit_out}`（WT-F）
+
+- **Task：** T23。未执行 T24（本条仅 T23）。
+- **Implementer：** `8f380e59-0ee8-47a9-b0f6-2f489643fe08`
+- **Spec reviewer：** `6679e800` C=0 I=0 Approved。
+- **Quality reviewer：** `da7cc7ed` C=0 I=0；Minor：测试未钉死 `shell=False`；`capture_output` 先收全量再截断。
+- **Human edits：** none
+- **红灯：** `ModuleNotFoundError: command_result`（`.superpowers/sdd/t23-red.txt`）
+- **绿灯：** `test_run_command` 6 passed；全量当时 **219 passed, 3 skipped**
+- **实现 commit：** `92f711a2edaca5605b44a306a58ef28b8eda9f5c`
+
+---
+
+## 2026-08-14 · T24 M5 executor + 排他 retry claim（WT-F）
+
+- **Task：** T24。未执行 T25。未合并 PR-F。
+- **Implementer：** `8f380e59-0ee8-47a9-b0f6-2f489643fe08`
+- **Spec reviewer：** `f9e740e8` C=0 I=0。
+- **Quality reviewer：** `9b79b77a` C=1 I=2（不同 `attempt_id` 拆排他；claim 先于 apply 消费；读工具可复用 apply 窗）。对抗 `41cc8804` 同 C=1，另指出 `run_command` 未关窗会再跑。均已在 `f90872b` 修。
+- **分支审查：** Spec `f3ce8a10` C=1 I=2（Action 未绑窗口镜像；`allow_delete` 未接线；claim 不要求 `execution_started`）；Quality `fea1c056` C=0 I=5（其中 claim/kind 已在 `f90872b` 修；剩余尾部 rename、symlink 当删除、`read_file` 无界 readline）。
+- **硬门槛测试 1–8：** 双连接仅一 claim；双 recover 不得双执行；无 claim 零写盘；错/旧 claim 拒绝；claim 一次性；混合 pre/post error；run_command recover 不重跑；正常 permit 路径无需 claim。均已通过。
+- **Human edits：** none
+- **红灯：** 缺 `executor` / `claim` / `UnauthorizedError`
+- **绿灯：** `test_executor` 初版 10 passed；I1 修复后 19 passed / 1 skipped；全量 **249 passed, 4 skipped**
+- **实现 commit：** `7afede0369ac0326931d07cee16139161718f110`
+- **复审：** Quality `0b525676` C=0 I=0；Spec `8cb88b05` C=0 I=1（未启动窗带无效 `claim_id` 先写盘）已修：首次 apply 若带 `claim_id` 在写盘前拒绝。
+- **推送：** `feat/f-tools`（不合并、不执行 T25）
+---
+
+## 2026-08-14 · T40 秘密扫描（WT-M）
+
+- **Task：** T40（WT-M / `feat/m-release` / `.worktrees/wt-m-release`）。未执行 T41。未合并 PR-M。
+- **Implementer：** 继承未提交实现（前 owner API limit）；Lane M owner `lane-m-owner` 续跑审查/修复/提交。
+- **Spec reviewer：** 初审 `93b59e55-cbb9-4f9b-8f99-fac2aba11f00` → Spec ✅；复审 `06f571ac-7875-4772-94d8-6ca554680e3a` → Spec ✅。C/I=0。
+- **Quality reviewer：** 初审 `b53a6c9c-69de-4445-88c1-90c0619c9454` Needs fixes（I=2：缺嵌套目录对照、路径未 resolve）；复审 `42c9383a-5b79-4fe3-a750-dda02c4f0ab7` → Approved。C/I=0。
+- **Human edits：** none
+- **红灯：** 仅有 `tests/test_secret_scan.py` 时 collection `ImportError: No module named 'scripts'`（`.superpowers/sdd/t40-red.txt`）。
+- **绿灯：** 初版 targeted 37 passed；I=2 修复后 targeted 38 passed；全量 **206 passed, 2 skipped**。
+- **实现 commit：** `ed0c8472335ba953cba7713731a5295d214c394d`（含 `test_config_load.py` PEM 头拼接卫生）。
+- **Minors（不修）：** stripe/gitlab/ASIA/github_pat/非通用 PEM 头无专测；`.cache`/`htmlcov` 未参数化；symlink 与 walk onerror 无测。
+
+---
+
+## 2026-08-14 · T41 CI（WT-M）
+
+- **Task：** T41（WT-M / `feat/m-release`）。未执行 T42/T43。未合并 PR-M。
+- **Implementer：** Lane M owner `lane-m-owner`
+- **Spec reviewer：** 初审 `dfe2102b-9144-4546-a35f-27436dd4eaf4` → Spec ✅；复审 `8433b255-56bc-4fc6-ae75-8c556380278c` → Spec ✅。C/I=0。
+- **Quality reviewer：** 初审 `5ac9d85c-b485-41ad-adcc-2f7ca2a68766` Needs fixes（I=2：SHA-256 子串过弱、`unit-test:`/`combined` 假绿）；复审 `24ca1d23-b361-4aa1-9b10-01f89a0bee3c` → Approved。C/I=0。
+- **Human edits：** none
+- **红灯：** 仅有 `tests/test_ci_files.py` 时 4 failed，缺 `.github/workflows/ci.yml` / `release.yml` / `.gitlab-ci.yml`（`.superpowers/sdd/t41-red.txt`）。
+- **绿灯：** targeted 4 passed；本地 `python scripts/secret_scan.py .` → clean 78 files；本地 `python -m build --wheel` → `guardedcoder-0.1.0-py3-none-any.whl`。
+- **实现 commit：** `e757a9d47700dc9928c79e77b2e217106f7cdefc`
+- **Minors（不修）：** Actions/镜像未钉 commit digest；SHA-256 仍是 token 子串；CI 测试未强制断言 `push:`。
+- **未声称** 远程 CI 已 pass。未创建真实 tag/Release。
+
+---
+
+## 2026-08-14 · Codex PR-M integration follow-up
+
+- **Trigger:** GitHub Actions run `31767433383` failed in strict hash mode because the Windows-generated lock omitted keyring's conditional Linux `SecretStorage` dependency.
+- **Change:** declared `SecretStorage` explicitly, regenerated both pip-tools hash locks with the frozen PyPI command, and added a regression assertion for the Linux backend.
+- **Verification:** full suite `211 passed, 2 skipped`; secret scan clean (78 files); wheel build passed; a fresh Windows Python 3.12 environment installed `requirements-dev.txt` with `--require-hashes` successfully.
+- **Human edits:** Codex integration fix requested and approved by the project owner.
+
+---
+
+## 2026-08-14 · Codex PR-F credential-redaction follow-up
+
+- **Trigger:** integration review found that Observation and audit redaction only recognized `sk-` credentials.
+- **Change:** introduced a shared sanitizer for common provider tokens, labeled opaque secrets, Bearer authorization values, and private-key material; Observation uses a bounded short replacement while audit uses `[redacted]`.
+- **Red/green:** the first implementation exposed an Observation byte-budget regression (`1 failed, 19 passed`); the bounded replacement fixed it. Targeted `20 passed`; full suite `284 passed, 4 skipped`; secret scan clean (95 files).
+- **Human edits:** Codex integration fix requested and approved by the project owner.
+
+
+---
+
+## 2026-08-14 · Lane I integration and discard ownership hardening (Codex)
+
+- **Agent / model:** Codex (current task; integration review and fix).
+- **Human edits:** none.
+- **Scope:** combined main's recovered-claim / `execution_started` schema with Lane I's nullable apply-back permit / fingerprint schema; rejected symlink, Windows junction, and non-exact registered worktree paths.
+- **Migration evidence:** legacy F schema keeps its recovery claim, gains nullable permit plus both fields, and passes `PRAGMA foreign_key_check`.
+- **Discard evidence:** aliases fail closed before `git worktree remove`; the lexical path must also appear in `git worktree list --porcelain -z`.
+- **Tests:** targeted `27 passed`; integrated full suite `323 passed, 4 skipped`.
 
 

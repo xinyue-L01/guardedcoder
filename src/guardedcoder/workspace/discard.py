@@ -23,11 +23,29 @@ def _git_path(repo: Path, value: str) -> Path:
     return path.resolve()
 
 
+def _path_is_alias(path: Path) -> bool:
+    if path.is_symlink():
+        return True
+    is_junction = getattr(path, "is_junction", None)
+    return bool(is_junction is not None and is_junction())
+
+
+def _registered_worktrees(origin: Path) -> set[Path]:
+    output = git_text(origin, "worktree", "list", "--porcelain", "-z")
+    return {
+        _absolute(field.removeprefix("worktree "))
+        for field in output.split("\0")
+        if field.startswith("worktree ")
+    }
+
+
 def _verify_ownership(ownership: WorktreeOwnership) -> None:
     try:
         origin = repo_real_path(ownership.repo_real_path)
         if origin != ownership.repo_real_path.resolve():
             raise OwnershipError("origin repository ownership does not match")
+        if _path_is_alias(ownership.worktree_path):
+            raise OwnershipError("recorded worktree path is a symlink or junction")
         if not ownership.worktree_path.is_dir():
             raise OwnershipError("recorded worktree does not exist")
 
@@ -46,6 +64,8 @@ def _verify_ownership(ownership: WorktreeOwnership) -> None:
         )
         if origin_common != worktree_common:
             raise OwnershipError("worktree belongs to another repository")
+        if _absolute(ownership.worktree_path) not in _registered_worktrees(origin):
+            raise OwnershipError("recorded path is not an exact registered worktree")
 
         canonical_base = git_text(
             origin,
