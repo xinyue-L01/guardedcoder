@@ -667,3 +667,19 @@
 - **全量：** **423 passed, 4 skipped**。
 - **实现 commit：** `0e47134531276623564e31574730342ae7d386d4`
 - **Minor 未修：** `print_usage` 未 redact；`auth`/`config`/`memory` 嵌套留给 T37/T38。
+
+---
+
+## 2026-08-14 · T37 config / auth（WT-K）
+
+- **Task：** T37 config 与 auth。未执行 T38。未合并 PR-K。
+- **Implementer：** `3c1c9d6a`（feat `d501137`；fix `523f862`）。
+- **Spec reviewer：** 初审 `f667a858` C=0 I=2；复审 `75676599` C=0 I=0。
+- **Quality reviewer：** 初审 `797d6873` C=0 I=1；复审 `dd1d9f19` C=0 I=0。
+- **Human edits：** none。
+- **红灯：** 初实现无 `guardedcoder.auth`；fix 轮 4 failed。
+- **绿灯：** targeted 48 passed（parse+config_auth）。
+- **全量：** **451 passed, 4 skipped**。
+- **实现 commit：** `d501137dca6d0082fa690cfa7f0d392b1e047965`
+- **修复 commit：** `523f86206a89271d5fdb2a4bb9d0032b431b01e7`
+- **Minor 未修：** Windows 二次 clear 可能过严；多余参数脱敏作用于全部子命令。
