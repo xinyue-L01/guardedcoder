@@ -15,7 +15,7 @@
 - TDD：先红后绿；保存红灯证据。
 - 每个实现 task 一个新鲜 subagent；commit/PR 注明来源与人工修改。
 - 每个大模块一个 worktree / PR；**worktree 必须从依赖 PR 已合并的最新 `main` 创建**，禁止一次性从旧 base 开全部 worktree。
-- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。下一实现 task 为 T21（PR-F；以状态表为准）。本 PR-E 在 T20 停止。
+- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。PR-F T21–T24 已在 `feat/f-tools` 完成（以状态表为准）。下一实现 task 为 T25（PR-G）。本 PR-F 在 T24 停止。
 - API Key 只进 keyring；不进 TOML/Git/日志/状态/记忆/Mock。
 - 五工具 + `finish`；不为演示新增 network/push/publish。
 - 完整 patch 禁止静默截断。
@@ -74,10 +74,10 @@ Human edits: <none|简述>
 | T18 | apply_patch 窗口恢复 | done | 45b03c76b328e55067d0028ccd680aad54b4c130 | WT-E / PR-E |
 | T19 | run_command 窗口 fail-closed | done | 7b8bd894561645935f042eb6ad3aaec4296ee326 | WT-E / PR-E |
 | T20 | 审批一次性 | done | a15bd72e41c6dd681e79553088267f3aafb62f43 | WT-E / PR-E |
-| T21 | 只读文件工具 | pending | — | WT-F / PR-F |
-| T22 | apply_patch 管线 | pending | — | WT-F / PR-F |
-| T23 | run_command + JUnit 路径占位符 | pending | — | WT-F / PR-F |
-| T24 | M5 只验证已消费 permit + 排他 retry claim | pending | — | WT-F / PR-F |
+| T21 | 只读文件工具 | done | bf019feeda436e200cbe1f173904c4c591e2634d | WT-F / PR-F |
+| T22 | apply_patch 管线 | done | b1794699ed25c1d6f2b457105be5a89964d19eca | WT-F / PR-F |
+| T23 | run_command + JUnit 路径占位符 | done | 92f711a2edaca5605b44a306a58ef28b8eda9f5c | WT-F / PR-F |
+| T24 | M5 只验证已消费 permit + 排他 retry claim | done | 7afede0369ac0326931d07cee16139161718f110 | WT-F / PR-F |
 | T25 | exit_code sensor | pending | — | WT-G / PR-G |
 | T26 | junit_xml（本次运行路径） | pending | — | WT-G / PR-G |
 | T27 | verify 计划不执行 | pending | — | WT-G / PR-G |
