@@ -92,7 +92,7 @@ Human edits: <none|简述>
 | T36 | argparse CLI | done | 0e47134531276623564e31574730342ae7d386d4 | WT-K / PR-K |
 | T37 | config / auth | done | 523f86206a89271d5fdb2a4bb9d0032b431b01e7 | WT-K / PR-K |
 | T38 | run/HITL/apply/discard/memory CLI | done | 07f6f4adb7be481a36ce055e2f437e1e208ba82c | WT-K / PR-K |
-| T39 | 机制演示 | done | 28c30736bdb3d2b32a9b2819154d8828427fbae5 | WT-L / PR-L |
+| T39 | 机制演示 | done | 23286e9be1fc7531fbcd2ffc0a33686b511d2c30 | WT-L / PR-L |
 | T40 | 秘密扫描脚本（先于 CI） | done | ed0c8472335ba953cba7713731a5295d214c394d | WT-M / PR-M |
 | T41 | GitHub Actions + GitLab unit-test | done | e757a9d47700dc9928c79e77b2e217106f7cdefc | WT-M / PR-M（同分支，T40 之后） |
 | T43 | 端到端离线任务生命周期 | pending | — | WT-N / PR-N |
