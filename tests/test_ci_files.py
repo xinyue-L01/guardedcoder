@@ -31,6 +31,11 @@ def test_required_ci_files_exist_with_unit_test_secret_scan_and_hashed_lock() ->
     assert "requirements-dev.txt" in gitlab
 
 
+def test_hashed_lock_contains_linux_keyring_backend() -> None:
+    lock = _read(ROOT / "requirements-dev.txt")
+    assert "secretstorage==" in lock.lower()
+
+
 def test_github_push_pr_ci_uses_python_312_hashed_lock_pytest_scan_and_wheel() -> None:
     text = _read(CI_YML)
     lowered = text.lower()

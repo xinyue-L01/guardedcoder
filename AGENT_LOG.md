@@ -405,5 +405,14 @@
 - **Minors（不修）：** Actions/镜像未钉 commit digest；SHA-256 仍是 token 子串；CI 测试未强制断言 `push:`。
 - **未声称** 远程 CI 已 pass。未创建真实 tag/Release。
 
+---
+
+## 2026-08-14 · Codex PR-M integration follow-up
+
+- **Trigger:** GitHub Actions run `31767433383` failed in strict hash mode because the Windows-generated lock omitted keyring's conditional Linux `SecretStorage` dependency.
+- **Change:** declared `SecretStorage` explicitly, regenerated both pip-tools hash locks with the frozen PyPI command, and added a regression assertion for the Linux backend.
+- **Verification:** full suite `211 passed, 2 skipped`; secret scan clean (78 files); wheel build passed; a fresh Windows Python 3.12 environment installed `requirements-dev.txt` with `--require-hashes` successfully.
+- **Human edits:** Codex integration fix requested and approved by the project owner.
+
 
 
