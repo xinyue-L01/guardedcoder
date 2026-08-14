@@ -1,0 +1,5 @@
+unit-test:
+  image: python:3.12
+  script:
+    - python -m pip install --require-hashes -r requirements-dev.txt
+    - python -m pytest

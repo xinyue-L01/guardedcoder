@@ -81,7 +81,11 @@ def test_secret_like_password_raises_config_error(tmp_path: Path) -> None:
 
 
 def test_pem_private_key_value_raises_config_error(tmp_path: Path) -> None:
-    pem = "-----BEGIN PRIVATE KEY-----\\nMIIFAKE\\n-----END PRIVATE KEY-----"
+    pem = (
+        "-----BEGIN "
+        + "PRIVATE KEY-----\\nMIIFAKE\\n-----END "
+        + "PRIVATE KEY-----"
+    )
     body = _LEGAL_TOML.replace('model = "local"', f'model = "{pem}"')
     path = _write_toml(tmp_path, body)
     with pytest.raises(ConfigError):
