@@ -40,7 +40,9 @@ class InjectedPort:
         )
 
 
-def _profile(profile_id: str, exit_code: int) -> CommandProfile:
+def _profile(
+    profile_id: str, exit_code: int, *, sensor: str | None = "exit_code"
+) -> CommandProfile:
     return CommandProfile(
         profile_id=profile_id,
         argv_template=(
@@ -51,7 +53,7 @@ def _profile(profile_id: str, exit_code: int) -> CommandProfile:
         cwd=".",
         timeout_seconds=30,
         max_output_bytes=4096,
-        sensor="exit_code",
+        sensor=sensor,
     )
 
 
@@ -340,3 +342,82 @@ def test_stub_port_returns_fixed_small_patch_or_over_limit() -> None:
     assert "GitPatchArtifactPort" not in inspect.getsource(
         sys.modules["guardedcoder.loop.ports"]
     )
+
+
+@pytest.mark.parametrize("outcome", ["", "done", "Success", "SUCCESS", "ok"])
+def test_unknown_finish_outcome_is_blocked_not_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outcome: str
+) -> None:
+    envelope = _envelope(_profile("unit", 0))
+    result, conn, port, spy = _run_finish(
+        tmp_path, monkeypatch, envelope=envelope, outcome=outcome
+    )
+
+    assert result.run_state == "blocked"
+    assert _task(conn)["run_state"] == "blocked"
+    assert result.run_state != "succeeded"
+    assert result.run_state != "unverified"
+    assert "executor.execute" not in spy.calls
+    assert "create_permit" not in spy.calls
+    assert port.exports == []
+
+
+def test_undeclared_sensor_is_error_and_cannot_succeed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    envelope = _envelope(_profile("unit", 0, sensor=None))
+    result, conn, port, spy = _run_finish(
+        tmp_path, monkeypatch, envelope=envelope, outcome="success"
+    )
+
+    assert "executor.execute" in spy.calls
+    assert result.run_state != "succeeded"
+    assert _task(conn)["run_state"] != "succeeded"
+    assert _task(conn)["artifact_state"] != "patch_ready"
+    assert port.exports == []
+
+
+def test_unknown_sensor_is_error_and_cannot_succeed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    envelope = _envelope(_profile("unit", 0, sensor="coverage_xml"))
+    result, conn, port, spy = _run_finish(
+        tmp_path, monkeypatch, envelope=envelope, outcome="success"
+    )
+
+    assert "executor.execute" in spy.calls
+    assert result.run_state != "succeeded"
+    assert _task(conn)["run_state"] != "succeeded"
+    assert _task(conn)["artifact_state"] != "patch_ready"
+    assert port.exports == []
+
+
+def test_verify_execute_failure_fail_closes_window_to_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    envelope = _envelope(_profile("unit", 0))
+    conn = connect(tmp_path / "g.db")
+    _boot(conn, ws, envelope)
+
+    def boom(*args: object, **kwargs: object):
+        raise RuntimeError("verify execute exploded")
+
+    monkeypatch.setattr(engine_mod, "execute", boom)
+    with pytest.raises(RuntimeError, match="verify execute exploded"):
+        step(
+            conn,
+            task_id="t1",
+            envelope=envelope,
+            llm=MockLLM(responses=['{"action":"finish","outcome":"success"}']),
+            worktree=ws,
+            task_description="done",
+            task_dir=tmp_path / "task",
+            patch_port=InjectedPort(),
+        )
+
+    assert _task(conn)["run_state"] == "error"
+    row = conn.execute("SELECT status FROM execution_windows").fetchone()
+    assert row is not None
+    assert row[0] == "error"

@@ -33,13 +33,14 @@ from guardedcoder.models.command_result import CommandResult
 from guardedcoder.models.envelope import CommandProfile, Envelope
 from guardedcoder.models.observation import Observation
 from guardedcoder.models.task import TaskBudget
-from guardedcoder.models.verdict import VerdictStatus
+from guardedcoder.models.verdict import Verdict, VerdictStatus
 from guardedcoder.persist.approval import request_approval
 from guardedcoder.persist.claim import claim_recovered_attempt
 from guardedcoder.persist.permit import consume_permit_and_open_window, create_permit
 from guardedcoder.persist.recover import RecoverDecision, recover
 from guardedcoder.persist.store import update_task
 from guardedcoder.persist.txn import write_txn
+from guardedcoder.sensors.common import bounded_summary, output_digest
 from guardedcoder.sensors.exit_code import exit_code_verdict
 from guardedcoder.sensors.junit_xml import junit_xml_verdict
 from guardedcoder.sensors.plan import build_verify_plan
@@ -268,7 +269,7 @@ def _set_task_state(
 
 
 def _sensor_verdict(profile: CommandProfile, result: CommandResult):
-    sensor = profile.sensor or "exit_code"
+    sensor = profile.sensor
     if sensor == "junit_xml":
         expected = result.junit_path if result.junit_path is not None else ""
         return junit_xml_verdict(
@@ -276,7 +277,18 @@ def _sensor_verdict(profile: CommandProfile, result: CommandResult):
             profile_id=profile.profile_id,
             expected_junit_path=expected,
         )
-    return exit_code_verdict(result, profile_id=profile.profile_id)
+    if sensor == "exit_code":
+        return exit_code_verdict(result, profile_id=profile.profile_id)
+    return Verdict(
+        profile_id=profile.profile_id,
+        sensor="undeclared" if sensor is None else sensor,
+        status=VerdictStatus.ERROR,
+        exit_code=result.exit_code,
+        summary=bounded_summary("undeclared or unknown sensor"),
+        output_truncated=result.truncated,
+        output_sha256=output_digest(result),
+        duration_seconds=result.duration_seconds,
+    )
 
 
 def _after_verify_state(conn: sqlite3.Connection, task_id: str) -> str:
@@ -350,6 +362,9 @@ def _finish(
         _set_task_state(conn, task_id, run_state="failed")
         return StepResult(action=action, observation=None, run_state="failed")
     if action.outcome == "blocked":
+        _set_task_state(conn, task_id, run_state="blocked")
+        return StepResult(action=action, observation=None, run_state="blocked")
+    if action.outcome != "success":
         _set_task_state(conn, task_id, run_state="blocked")
         return StepResult(action=action, observation=None, run_state="blocked")
 
