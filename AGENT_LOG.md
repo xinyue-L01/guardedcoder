@@ -758,3 +758,23 @@
 - **AGENT_LOG 审计补项：** 仅追加本条 T42（审计时缺该条目）。未改写 T01–T41 / T43。
 - **未代写** REFLECTION.md。**未创建** git tag / GitHub Release。
 - **Quality Minor 未修：** 许可证测试断言偏松；一条 `· T01–T43` 范围标题可骗过 AGENT_LOG 扫描。
+
+---
+
+## 2026-08-14 · 独立外审（glm-5.2，合并后集成审查）
+
+- **审查者：** OpenCode（glm-5.2），独立只读外审，未参与任何实现。
+- **性质：** PR-K（#13）合并后集成审查 + T39（#14）、T43（#15）、T42（#16）合并后审查。这些 PR 合并前未经此外审。
+- **Base → Head：** `69b20f6`（PR-K 前 main）→ `4d9e1d5`（T42 后 main）。
+- **执行只读命令：** `git status` / `log` / `diff --check`；`python -m pytest -q` → **500 passed, 4 skipped**；`scripts/secret_scan.py .` → clean。
+- **Spec：**
+  - **S-I1（Important，US-1 未达）：** `format_effective_envelope`（`service.py:83-103`）未展示「原工作树是否干净」与「规范化后的工作区真实路径」。
+- **Quality：**
+  - **Q-I1（Important）：** `handle_command`（`service.py:147-161`）将捕获的业务异常 `str(exc)` 直接打印到 stdout；`main()`（`cli.py:175-180`）。
+  - **Q-I2（Important，已推迟）：** `_handle_resume`（`service.py:619-645`）在非 `awaiting_approval` / `executing_action` 路径只调用一次 `step`。
+  - **Q-I3（已闭环）：** trap（resume 重跑已开始的 `run_command`）由 T43 `test_run_command_started_resume_does_not_call_spy` 覆盖。
+- **Minor（不阻塞）：** `_verify_resume` 允许 `bound_revision in {rev, rev-1}`（`reject`→`resume` 过渡，建议加注释）；`_handle_run` 磁盘清理不完整。
+- **计数：** Critical = 0；Important = 3（S-I1 / Q-I1 / Q-I2，均属 PR-K 合并时未外审的 CLI 缺口）；Minor = 若干。
+- **结论：** 无 Critical，无安全漏洞（硬边界 / Key / permit / 审批 / 原树 / 重跑均已核验）。内核、E2E、机制演示、CI 就绪。3 项 Important 为 CLI 层规格问题。
+- **产品负责人决定：** 接受此外审。3 项 Important 不是安全漏洞；本回合不改代码、不开修复 PR。记为已知限制，推迟到 **v0.1.1**。本条只补日志。
+- **Human edits：** 学生接受外审并指示仅追加本条目（无实现代码改动）。
