@@ -378,6 +378,57 @@
 
 ---
 
+## 2026-08-14 · T31 脏树拒绝、创建/discard 归属
+
+- **Task：** T31（WT-I / `feat/i-workspace`）。未执行 T32。未合并 PR-I。
+- **Implementer：** lane-i-owner
+- **Spec reviewer：** 初审 `4c8e507f-25ff-4e8e-8987-bcad5903bb38` → C/I=0；复审 `ee113a4b-f6a1-4e67-af34-3f4646ab297b` → Spec ✅ C/I=0。Minor：`resolve()` 跟随符号链接。
+- **Quality reviewer：** 初审 `710f66bd-1f37-4b07-a5c5-fee62fc2a351` Needs fixes（I=3：HEAD 冻结、Windows 设备名/尾点、缺 `discard_owned_worktree` 测试）；复审 `ab524144-2d7d-4e1b-82e8-a357c09b4ca7` → Approved C/I=0。Minor：remove 后残留、清理异常掩盖原因。
+- **Human edits：** none
+- **红灯：** `.superpowers/sdd/t31-red.txt` collection `ModuleNotFoundError: guardedcoder.workspace`；审查修复红灯 `foo.` DID NOT RAISE、`NUL` 设备路径、HEAD 移动后 discard 因 `HEAD==base_commit` 拒绝。
+- **绿灯：** `tests/test_worktree.py` **18 passed**；全量 **198 passed, 2 skipped**。
+- **实现 commit：** `bb1426bc7877a853e8c633022c9245042f8b478c`
+
+---
+
+## 2026-08-14 · T32 完整 patch artifact
+
+- **Task：** T32（WT-I / `feat/i-workspace`）。未执行 T33。未合并 PR-I。
+- **Implementer：** lane-i-owner
+- **Spec reviewer：** `20300a75-fda7-42f9-9310-abc6d4c12607` → Spec ✅ C/I=0。Minor：`"truncated" in text` 也能匹配 `truncated=false`（已改为断言 `truncated=true`）。
+- **Quality reviewer：** 初审 `c01093e7-46bb-4ed0-818e-d8c85c546f5d` Needs fixes（I=1：只查 origin porcelain，锁不住 worktree index）；复审 `6a0339ed-cadb-4b0f-9d37-458bb5bc15fe` → Approved C/I=0。
+- **Human edits：** none
+- **红灯：** `.superpowers/sdd/t32-red.txt` collection `ModuleNotFoundError: guardedcoder.workspace.artifact`
+- **绿灯：** `tests/test_patch_artifact.py` **3 passed**；全量 **201 passed, 2 skipped**。
+- **实现 commit：** `940470f27584e790a24dec11da57fcc94f5e4238`
+
+---
+
+## 2026-08-14 · T33 apply-back 窗口
+
+- **Task：** T33（WT-I / `feat/i-workspace`）。未合并 PR-I。
+- **Implementer：** lane-i-owner
+- **Spec reviewer：** 初审 `2f3cae27-453c-4796-aebe-ed53b1e158c6` Needs fixes（I=1：recover 未校验 `task.repo_path`）；复审 `d119acb1-1d49-4f10-ac85-20c5235b5400` → Spec ✅ C/I=0。
+- **Quality reviewer：** 初审 `31e83f6d-e6e0-4776-b82b-099625c8b1bb` I=2（旧库 permit_id NOT NULL；空 postimage 虚真）；`3c3b3bec-9821-428a-bb8d-17bfaacfa7c0` I=1（重建拷贝 NULL opened_revision）；复审 `4c10bce7-9c69-49c5-8f13-91050274431e` → Approved C/I=0。
+- **Human edits：** none
+- **红灯：** `.superpowers/sdd/t33-red.txt` collection `ModuleNotFoundError: guardedcoder.workspace.apply_back`
+- **绿灯：** `tests/test_apply_back.py` **14 passed**；全量 **215 passed, 2 skipped**。
+- **实现 commit：** `83d97079dea01938072d68e4cb76d283a059dcd1`
+
+---
+
+## 2026-08-14 · PR-I branch follow-up（diff 路径解析）
+
+- **性质：** branch-level Critical/Important。不改 T33 已完成状态（T33 实现 commit 仍为 `83d97079dea01938072d68e4cb76d283a059dcd1`）。
+- **Implementer：** lane-i-owner
+- **Spec reviewer：** 初审 `ac2082b9-7879-4a40-91ba-6fae9b9729b8` I=1；`51ffef5e-ca5d-4530-85b9-a885929ad10d` I=1（C-octal）；复审 `2bd67a16-98a6-4b2b-bb5e-1f9dac9a968a` → Spec ✅ C/I=0。
+- **Quality reviewer：** 初审 `dcc2f948-e8d6-4d7b-aa6b-5086ea93040b` C=1；`62f8adba-4d6c-493f-9b7c-d5fcae087e10` C=1；复审 `fa56c0df-0526-4a9c-aefa-a6cf65318856` → Approved C/I=0。
+- **Human edits：** none
+- **红灯：** `my file.txt` 被拆成 `file.txt`；`"a/\344\270\255..."` 被解成 `344270255....txt`，全 pre recover 误标 applied。
+- **绿灯：** `tests/test_apply_back.py` **16 passed**；全量 **217 passed, 2 skipped**。
+- **Follow-up commit：** `ec33655b6b38eaf33da7c30e2251cad5ad049e7a`
+---
+
 ## 2026-08-14 · T21 只读文件工具（WT-F）
 
 - **Task：** T21（WT-F / `feat/f-tools`）。未执行 T22（本条仅 T21）。
@@ -480,5 +531,16 @@
 - **Red/green:** the first implementation exposed an Observation byte-budget regression (`1 failed, 19 passed`); the bounded replacement fixed it. Targeted `20 passed`; full suite `284 passed, 4 skipped`; secret scan clean (95 files).
 - **Human edits:** Codex integration fix requested and approved by the project owner.
 
+
+---
+
+## 2026-08-14 · Lane I integration and discard ownership hardening (Codex)
+
+- **Agent / model:** Codex (current task; integration review and fix).
+- **Human edits:** none.
+- **Scope:** combined main's recovered-claim / `execution_started` schema with Lane I's nullable apply-back permit / fingerprint schema; rejected symlink, Windows junction, and non-exact registered worktree paths.
+- **Migration evidence:** legacy F schema keeps its recovery claim, gains nullable permit plus both fields, and passes `PRAGMA foreign_key_check`.
+- **Discard evidence:** aliases fail closed before `git worktree remove`; the lexical path must also appear in `git worktree list --porcelain -z`.
+- **Tests:** targeted `27 passed`; integrated full suite `323 passed, 4 skipped`.
 
 
