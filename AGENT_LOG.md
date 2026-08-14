@@ -778,3 +778,13 @@
 - **结论：** 无 Critical，无安全漏洞（硬边界 / Key / permit / 审批 / 原树 / 重跑均已核验）。内核、E2E、机制演示、CI 就绪。3 项 Important 为 CLI 层规格问题。
 - **产品负责人决定：** 接受此外审。3 项 Important 不是安全漏洞；本回合不改代码、不开修复 PR。记为已知限制，推迟到 **v0.1.1**。本条只补日志。
 - **Human edits：** 学生接受外审并指示仅追加本条目（无实现代码改动）。
+
+---
+
+## 2026-08-14 · G2 Release v0.1.0
+
+- **Tag：** `v0.1.0` → commit `10a0edb7975781fd3ccad758fa258e077dda12d6`
+- **Release：** https://github.com/xinyue-L01/guardedcoder/releases/tag/v0.1.0
+- **Actions：** https://github.com/xinyue-L01/guardedcoder/actions/runs/31790101161 success
+- **资产：** `guardedcoder-0.1.0-py3-none-any.whl` 与同名 `.sha256`
+- **未代写** REFLECTION.md。**未填** submission.jsonc 学号/姓名。

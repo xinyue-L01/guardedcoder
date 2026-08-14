@@ -21,10 +21,10 @@ python -m pip install --require-hashes -r requirements-dev.txt
 python -m pip install -e .
 ```
 
-发布 wheel（发布后填写真实 GitHub Release 资产 URL，再替换占位）：
+发布 wheel（Release：https://github.com/xinyue-L01/guardedcoder/releases/tag/v0.1.0）：
 
 ```text
-pipx install <release-wheel-url>
+pipx install <该 Release 页上的 wheel 资产 URL>
 pipx upgrade guardedcoder
 pipx uninstall guardedcoder
 ```
@@ -108,7 +108,8 @@ python demos/mechanism_demo.py
 
 ## 分发
 
-源码与 Release 平台均为 GitHub。构建带版本号的 wheel，校验和用 `scripts/hash_wheel.py`（与 `hashlib.sha256` 一致）。GitHub Actions 在 tag 上构建并上传；本 README **不声称** Release 已存在。资产 URL **发布后填写**。
+源码与 Release 平台均为 GitHub。构建带版本号的 wheel，校验和用 `scripts/hash_wheel.py`（与 `hashlib.sha256` 一致）。GitHub Actions 在 tag 上构建并上传。当前 tag 页：https://github.com/xinyue-L01/guardedcoder/releases/tag/v0.1.0 。从该页复制 wheel 资产链接再安装。
+
 
 ## 项目目录结构
 
@@ -189,9 +190,9 @@ python scripts/hash_wheel.py dist/*.whl
 
 仓库：https://github.com/xinyue-L01/guardedcoder
 
-Release 资产 URL：**发布后填写**（不要伪造尚未创建的 tag 或资产链接）。
+Release：https://github.com/xinyue-L01/guardedcoder/releases/tag/v0.1.0
 
-安装示例（占位）：`pipx install <release-wheel-url>`
+安装示例：从该页复制 `.whl` 资产链接后 `pipx install <wheel-url>`（新版本资产 URL 发布后填写）。
 
 校验：对下载的 `.whl` 运行 `python scripts/hash_wheel.py <wheel>`，将打印的 hex 与 Release 上的 `.sha256` / 发布说明比对。
 
