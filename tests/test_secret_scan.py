@@ -106,6 +106,7 @@ def test_scan_workspace_accepts_clean_text_and_binary_files(tmp_path: Path) -> N
         ".tox",
         ".nox",
         ".superpowers",
+        ".worktrees",
         "node_modules",
         "dist",
         "build",

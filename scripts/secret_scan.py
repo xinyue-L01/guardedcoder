@@ -112,6 +112,7 @@ _EXCLUDED_DIRECTORY_NAMES = frozenset(
         ".superpowers",
         ".tox",
         ".venv",
+        ".worktrees",
         "__pycache__",
         "build",
         "dist",

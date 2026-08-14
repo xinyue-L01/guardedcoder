@@ -580,3 +580,12 @@
 - **Scope:** merged repository memory tables and T34/T35 status with the current permit, recovery-claim, apply-back, tool, and release baseline.
 - **Schema check:** `memory_records` and both deterministic indexes coexist with nullable apply-back permits, recovered claims, fingerprints, and `execution_started`.
 - **Tests:** integrated full suite `341 passed, 4 skipped`.
+
+---
+
+## 2026-08-14 · Final main secret-scan boundary fix (Codex)
+
+- **Trigger:** the post-merge full suite found that a local multi-worktree checkout made the repository self-test scan ignored `.worktrees/` implementation branches; CI clones did not contain those directories.
+- **Change:** treat `.worktrees/` like the existing ignored `.git`, `.venv`, and `.superpowers` local-state directories, with a parameterized regression test.
+- **Boundary:** tracked source remains scanned; only the Git-ignored implementation worktree container is excluded.
+- **Human edits:** none.
