@@ -652,3 +652,18 @@
 - **全量：** **400 passed, 4 skipped**。
 - **实现 commit：** `925eaee023442f3376bc5b7d1c197a872717c16f`
 - **Minor 未修：** 整段正则非 Verdict 解析；只门控二次+ apply_patch；kv 形态比 JSON 松。
+
+---
+
+## 2026-08-14 · T36 argparse CLI（WT-K）
+
+- **Task：** T36 argparse 骨架。未执行 T37。未合并 PR-K。
+- **Implementer：** `6b111e5d`（feat `0e47134`）。
+- **Spec reviewer：** `e0699ff1` C=0 I=0。
+- **Quality reviewer：** `f76ae68b` C=0 I=0。
+- **Human edits：** none。
+- **红灯：** `tests/test_cli_parse.py` collection 1 error（无 `guardedcoder.cli`）。
+- **绿灯：** targeted **20 passed**。
+- **全量：** **423 passed, 4 skipped**。
+- **实现 commit：** `0e47134531276623564e31574730342ae7d386d4`
+- **Minor 未修：** `print_usage` 未 redact；`auth`/`config`/`memory` 嵌套留给 T37/T38。
