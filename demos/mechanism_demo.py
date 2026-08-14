@@ -5,8 +5,13 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import sys
 import tempfile
 from pathlib import Path
+
+_SRC = Path(__file__).resolve().parents[1] / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
 
 from guardedcoder.config.load import load_app_config
 from guardedcoder.config.synthesize import synthesize_envelope

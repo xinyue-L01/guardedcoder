@@ -25,6 +25,9 @@ _SCENE_ORDER = (
 def _run_demo() -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["PYTHONHASHSEED"] = "0"
+    src = str(ROOT / "src")
+    previous = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = src if not previous else src + os.pathsep + previous
     return subprocess.run(
         [sys.executable, str(DEMO)],
         cwd=ROOT,
