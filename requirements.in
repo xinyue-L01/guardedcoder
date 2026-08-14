@@ -1,4 +1,8 @@
 pydantic
 httpx
 keyring
+# Keep the Linux keyring backend in locks generated on Windows. It is harmless
+# on other platforms and prevents strict-hash Linux installs from resolving an
+# unpinned conditional dependency at install time.
+SecretStorage
 defusedxml

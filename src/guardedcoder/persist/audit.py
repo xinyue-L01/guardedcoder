@@ -1,20 +1,18 @@
 from __future__ import annotations
 
 import json
-import re
 import sqlite3
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from guardedcoder.persist.txn import write_txn
-
-_KEY_SHAPED = re.compile(r"sk-[A-Za-z0-9_-]+")
+from guardedcoder.security.redact import redact_text
 
 
 def _redact(value: Any) -> Any:
     if isinstance(value, str):
-        return _KEY_SHAPED.sub("[redacted]", value)
+        return redact_text(value)
     if isinstance(value, dict):
         return {k: _redact(v) for k, v in value.items()}
     if isinstance(value, list):

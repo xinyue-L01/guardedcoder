@@ -1,3 +1,11 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from guardedcoder.governance.fence import FenceCode
+
+
 class ActionParseError(Exception):
     """Raised when an LLM response cannot be parsed as a legal Action."""
 
@@ -36,3 +44,27 @@ class ApprovalError(Exception):
 
 class PendingConsumedError(Exception):
     """Raised when a PendingAction is consumed more than once."""
+
+
+class FileToolError(ValueError):
+    """Raised when a file tool cannot safely process a path."""
+
+
+class FenceError(FileToolError):
+    """Raised when a file tool path fails the workspace fence."""
+
+    def __init__(self, code: FenceCode) -> None:
+        self.code = code
+        super().__init__(code.value)
+
+
+class PatchError(FileToolError):
+    """Raised when a unified diff cannot be previewed or applied atomically."""
+
+
+class UnauthorizedError(Exception):
+    """Raised when M5 is invoked without a consumed permit, window, or claim."""
+
+
+class ClaimConflictError(Exception):
+    """Raised when an exclusive recovered-attempt claim is already held."""
