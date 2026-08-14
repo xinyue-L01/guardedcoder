@@ -715,4 +715,7 @@
 - **实现 commit：** `d5a5afc598741011f62bff6d332b02368a36f6c4`
 - **修复 commit：** `28c30736bdb3d2b32a9b2819154d8828427fbae5`
 - **CI 修复 commit：** `23286e9be1fc7531fbcd2ffc0a33686b511d2c30`（子进程无 `PYTHONPATH`/`editable` 时 `import guardedcoder` 失败）。
+- **CI 修复 Spec reviewer：** `856a8371-8c05-455f-bd4e-f0430fe15bda` C=0 I=0。
+- **CI 修复 Quality reviewer：** `ae784784-b227-48df-bb6d-274b5637d4b8` C=0 I=0。
+- **CI：** push `31784374172` success；pull_request `31784377086` success。
 - **Minor 未修：** 越写范围 HITL 走 `classify_write` 非 `evaluate`（T15）；apply_patch 恢复只演示 retryable_same_attempt。
