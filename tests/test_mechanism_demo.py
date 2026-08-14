@@ -108,7 +108,13 @@ def test_permit_window_refuses_replays_and_fail_closes_crash() -> None:
         "happy_path: evaluate>create_permit>consume_open_window>execute>observation"
         in block
     )
-    assert "crash_recovery: fail_closed recorded_error" in block
+    assert "crash_recovery_run_command: fail_closed recorded_error no_rerun" in block
+    assert "crash_recovery_apply_patch: retryable_same_attempt" in block
+    assert "crash_recovery_run_command:" in block
+    assert "crash_recovery_apply_patch:" in block
+    run_idx = block.index("crash_recovery_run_command:")
+    patch_idx = block.index("crash_recovery_apply_patch:")
+    assert block[run_idx : run_idx + 80] != block[patch_idx : patch_idx + 80]
 
 
 def test_illegal_toml_refuses_without_worktree_or_llm() -> None:
@@ -119,6 +125,8 @@ def test_illegal_toml_refuses_without_worktree_or_llm() -> None:
     assert "secret_like: refuse no_worktree no_llm" in block
     assert "shell_string: refuse no_worktree no_llm" in block
     assert "hard_forbidden_profile: refuse no_worktree no_llm" in block
+    assert "wrong_type: refuse no_worktree no_llm" in block
+    assert "legal_synthesize: identical_envelope_hash" in block
 
 
 def test_demo_source_does_not_add_network_push_or_publish_tools() -> None:

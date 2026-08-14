@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 import tempfile
 from pathlib import Path
 
 from guardedcoder.config.load import load_app_config
+from guardedcoder.config.synthesize import synthesize_envelope
 from guardedcoder.config.template import DEFAULT_CONFIG_TOML
 from guardedcoder.errors import (
     ActionParseError,
@@ -42,6 +44,15 @@ from guardedcoder.persist.store import create_task
 from guardedcoder.tools.executor import execute
 
 _MAX_CHARS = 8192
+
+
+class _SpyExecutor:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def execute(self, *args: object, **kwargs: object) -> None:
+        self.calls += 1
+        raise AssertionError("executor must not rerun")
 
 
 def _envelope(
@@ -360,23 +371,69 @@ def _scene_permit_window(root: Path) -> list[str]:
         envelope_hash=crash_env.envelope_hash,
         expected_revision=1,
     )
-    consume_permit_and_open_window(
+    crash_window = consume_permit_and_open_window(
         crash_conn,
         task_id="crash",
         permit_id=crash_permit,
         expected_revision=2,
         action_kind="run_command",
     )
+    crash_conn.execute(
+        "UPDATE execution_windows SET execution_started = 1 WHERE window_id = ?",
+        (crash_window,),
+    )
+    spy = _SpyExecutor()
     crash_task = _task(crash_conn, "crash")
-    decision = recover(
+    cmd_decision = recover(
         crash_conn,
         task_id="crash",
         workspace=crash_ws,
         expected_revision=crash_task["state_revision"],
+        executor=spy,
     )
-    assert decision is RecoverDecision.recorded_error
+    assert cmd_decision is RecoverDecision.recorded_error
+    assert spy.calls == 0
+
+    patch_ws = root / "patch"
+    patch_ws.mkdir(parents=True)
+    before = b"before\n"
+    after = b"after\n"
+    (patch_ws / "a.txt").write_bytes(before)
+    patch_conn = connect(patch_ws / "g.db")
+    patch_env = _envelope(write_paths=(".",), read_paths=(".",))
+    _boot(patch_conn, patch_ws, patch_env, "patch")
+    patch_permit = create_permit(
+        patch_conn,
+        task_id="patch",
+        action_id="a4",
+        fingerprint="fp-patch",
+        envelope_hash=patch_env.envelope_hash,
+        expected_revision=1,
+    )
+
+    def _mark(body: bytes) -> dict[str, object]:
+        return {"exists": True, "sha256": hashlib.sha256(body).hexdigest()}
+
+    consume_permit_and_open_window(
+        patch_conn,
+        task_id="patch",
+        permit_id=patch_permit,
+        expected_revision=2,
+        action_kind="apply_patch",
+        preimage={"a.txt": _mark(before)},
+        postimage={"a.txt": _mark(after)},
+    )
+    patch_task = _task(patch_conn, "patch")
+    patch_decision = recover(
+        patch_conn,
+        task_id="patch",
+        workspace=patch_ws,
+        expected_revision=patch_task["state_revision"],
+    )
+    assert patch_decision is RecoverDecision.retryable_same_attempt
     conn.close()
     crash_conn.close()
+    patch_conn.close()
     assert wrong == "refuse"
     assert replay == "refuse"
     assert permit_replay == "refuse"
@@ -386,7 +443,8 @@ def _scene_permit_window(root: Path) -> list[str]:
         "old_approval_replay: refuse",
         "permit_replay: refuse",
         "happy_path: evaluate>create_permit>consume_open_window>execute>observation",
-        "crash_recovery: fail_closed recorded_error",
+        "crash_recovery_run_command: fail_closed recorded_error no_rerun",
+        "crash_recovery_apply_patch: retryable_same_attempt",
     ]
 
 
@@ -419,12 +477,24 @@ def _scene_illegal_toml(root: Path) -> list[str]:
             'argv_template = ["pip", "install", "pkg"]',
         ),
     )
+    wrong_type = _refuse(
+        "wrong_type",
+        base.replace("max_steps = 10", 'max_steps = "nope"'),
+    )
+    legal_path = root / "legal.toml"
+    legal_path.write_text(base, encoding="utf-8")
+    cfg = load_app_config(legal_path)
+    first = synthesize_envelope(cfg)
+    second = synthesize_envelope(cfg)
+    assert first.envelope_hash == second.envelope_hash
     return [
         "SCENE 4 illegal_toml",
         unknown,
         secret,
         shell,
         forbidden,
+        wrong_type,
+        "legal_synthesize: identical_envelope_hash",
     ]
 
 
