@@ -87,6 +87,27 @@ CREATE TABLE IF NOT EXISTS audit_events (
     payload_json TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS memory_records (
+    record_id TEXT PRIMARY KEY,
+    repo_id TEXT NOT NULL,
+    record_type TEXT NOT NULL,
+    content TEXT NOT NULL,
+    rationale TEXT,
+    paths_json TEXT NOT NULL,
+    tags_json TEXT NOT NULL,
+    source TEXT NOT NULL,
+    status TEXT NOT NULL,
+    trust_label TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    supersedes_id TEXT REFERENCES memory_records(record_id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_memory_repo_status_type
+    ON memory_records(repo_id, status, record_type);
+
+CREATE INDEX IF NOT EXISTS idx_memory_repo_created
+    ON memory_records(repo_id, created_at, record_id);
 """
 
 

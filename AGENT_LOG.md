@@ -378,6 +378,33 @@
 
 ---
 
+## 2026-08-14 · T34 记忆存储、检索、CLI 函数
+
+- **Task：** T34（WT-J / `feat/j-memory`）。未执行 T35。未合并 PR-J。
+- **Implementer：** `72ee70f4-8670-48bc-a95c-78459cd619e0`（续跑 inherited uncommitted）
+- **Spec reviewer：** 初审 `7d8b0783-1dfa-4e3e-a2ae-dcfdc732d840` Needs fixes（Important：`paths`/`tags` 裸 `str` 拆字）；复审 `5830fdda-2f6d-45e8-a950-9e50e57e161b` → Spec ✅ C/I=0
+- **Quality reviewer：** 初审 `671c7c58-7678-4058-beb4-9685c555d1de` Needs fixes（Important×4：schema/`executescript`、私有 normalize、绝对路径、检索测试锁）；复审 `fefc808e-a3ab-4ffa-b62f-59fd071d52f6` → Approved C/I=0
+- **Human edits：** none
+- **红灯：** inherited `.superpowers/sdd/t34-red.txt`：`ModuleNotFoundError: No module named 'guardedcoder.memory'`。修复后补测红灯：`memory_records` 不在 `connect()` schema；`paths="tests"` 未 TypeError；`C:/secrets` 未拒。
+- **绿灯：** `tests/test_memory.py` 11 passed；全量 **191 passed, 2 skipped**
+- **实现 commit：** `932addac7c9f9de4fe37b920a63e3174e0b509bd`
+
+---
+
+## 2026-08-14 · T35 记忆不授权 + summary + 保留策略
+
+- **Task：** T35（WT-J / `feat/j-memory`）。未合并 PR-J。
+- **Implementer：** `72ee70f4-8670-48bc-a95c-78459cd619e0`
+- **Spec reviewer：** `48bd5fe0-c627-4d0e-b8e1-f22850ad316b` → Spec ✅ C/I=0。Minor：`add_task_summary` 不拒 diff（门闩在 `build_task_summary`）。
+- **Quality reviewer：** 初审 `c6253ed5-bd9e-4f34-a1ee-932c1896af9e` Needs fixes（Important×2：GC 事务外快照、DELETE 未用规范化 repo_id）；复审 `ccdd5307-52cd-4d3b-9df8-318fa551ce05` → Approved C/I=0。Minor：summary 测试未锁 caplog；signature 测试禁 `write_paths`。
+- **Human edits：** none
+- **红灯：** `ModuleNotFoundError: No module named 'guardedcoder.memory.summarize'`。GC 补测：`gc_task_summaries(conn, "  repo-a  ")` 声称 deleted=1 但行仍在。
+- **绿灯：** `tests/test_memory_trust.py` 7 passed；全量 **198 passed, 2 skipped**
+- **实现 commit：** `24e4063eccede65776808992ac00873362a819b8`
+
+
+---
+
 ## 2026-08-14 · T31 脏树拒绝、创建/discard 归属
 
 - **Task：** T31（WT-I / `feat/i-workspace`）。未执行 T32。未合并 PR-I。
@@ -544,3 +571,12 @@
 - **Tests:** targeted `27 passed`; integrated full suite `323 passed, 4 skipped`.
 
 
+---
+
+## 2026-08-14 · Lane J memory integration (Codex)
+
+- **Agent / model:** Codex (current task; integration review).
+- **Human edits:** none.
+- **Scope:** merged repository memory tables and T34/T35 status with the current permit, recovery-claim, apply-back, tool, and release baseline.
+- **Schema check:** `memory_records` and both deterministic indexes coexist with nullable apply-back permits, recovered claims, fingerprints, and `execution_started`.
+- **Tests:** integrated full suite `341 passed, 4 skipped`.

@@ -84,11 +84,11 @@ Human edits: <none|简述>
 | T28 | 主循环单步（正确 permit 序） | pending | — | WT-H / PR-H |
 | T29 | finish 门闩 + PatchArtifactPort | pending | — | WT-H / PR-H |
 | T30 | 反馈门控 MockLLM | pending | — | WT-H / PR-H |
-| T31 | 脏树拒绝、创建/discard 归属 | done | bb1426bc7877a853e8c633022c9245042f8b478c | WT-I `.worktrees/wt-i-workspace`；未合并 |
-| T32 | 完整 patch artifact | done | 940470f27584e790a24dec11da57fcc94f5e4238 | WT-I `.worktrees/wt-i-workspace`；未合并 |
-| T33 | apply-back 窗口 | done | 83d97079dea01938072d68e4cb76d283a059dcd1 | WT-I `.worktrees/wt-i-workspace`；未合并 |
-| T34 | 记忆写入检索 + CLI 函数 | pending | — | WT-J / PR-J |
-| T35 | 不授权、summary、100/90 清理 | pending | — | WT-J / PR-J |
+| T31 | 脏树拒绝、创建/discard 归属 | done | bb1426bc7877a853e8c633022c9245042f8b478c | WT-I / PR-I #8 merged |
+| T32 | 完整 patch artifact | done | 940470f27584e790a24dec11da57fcc94f5e4238 | WT-I / PR-I #8 merged |
+| T33 | apply-back 窗口 | done | 83d97079dea01938072d68e4cb76d283a059dcd1 | WT-I / PR-I #8 merged |
+| T34 | 记忆写入检索 + CLI 函数 | done | 932addac7c9f9de4fe37b920a63e3174e0b509bd | WT-J / PR-J |
+| T35 | 不授权、summary、100/90 清理 | done | 24e4063eccede65776808992ac00873362a819b8 | WT-J / PR-J |
 | T36 | argparse CLI | pending | — | WT-K / PR-K |
 | T37 | config / auth | pending | — | WT-K / PR-K |
 | T38 | run/HITL/apply/discard/memory CLI | pending | — | WT-K / PR-K |
