@@ -376,6 +376,43 @@
 - **绿灯（裁决后）：** 全量 **180 passed, 2 skipped**。
 - **推送：** `feat/e-persist`（不合并、不执行 T21）。
 
+---
+
+## 2026-08-14 · T40 秘密扫描（WT-M）
+
+- **Task：** T40（WT-M / `feat/m-release` / `.worktrees/wt-m-release`）。未执行 T41。未合并 PR-M。
+- **Implementer：** 继承未提交实现（前 owner API limit）；Lane M owner `lane-m-owner` 续跑审查/修复/提交。
+- **Spec reviewer：** 初审 `93b59e55-cbb9-4f9b-8f99-fac2aba11f00` → Spec ✅；复审 `06f571ac-7875-4772-94d8-6ca554680e3a` → Spec ✅。C/I=0。
+- **Quality reviewer：** 初审 `b53a6c9c-69de-4445-88c1-90c0619c9454` Needs fixes（I=2：缺嵌套目录对照、路径未 resolve）；复审 `42c9383a-5b79-4fe3-a750-dda02c4f0ab7` → Approved。C/I=0。
+- **Human edits：** none
+- **红灯：** 仅有 `tests/test_secret_scan.py` 时 collection `ImportError: No module named 'scripts'`（`.superpowers/sdd/t40-red.txt`）。
+- **绿灯：** 初版 targeted 37 passed；I=2 修复后 targeted 38 passed；全量 **206 passed, 2 skipped**。
+- **实现 commit：** `ed0c8472335ba953cba7713731a5295d214c394d`（含 `test_config_load.py` PEM 头拼接卫生）。
+- **Minors（不修）：** stripe/gitlab/ASIA/github_pat/非通用 PEM 头无专测；`.cache`/`htmlcov` 未参数化；symlink 与 walk onerror 无测。
+
+---
+
+## 2026-08-14 · T41 CI（WT-M）
+
+- **Task：** T41（WT-M / `feat/m-release`）。未执行 T42/T43。未合并 PR-M。
+- **Implementer：** Lane M owner `lane-m-owner`
+- **Spec reviewer：** 初审 `dfe2102b-9144-4546-a35f-27436dd4eaf4` → Spec ✅；复审 `8433b255-56bc-4fc6-ae75-8c556380278c` → Spec ✅。C/I=0。
+- **Quality reviewer：** 初审 `5ac9d85c-b485-41ad-adcc-2f7ca2a68766` Needs fixes（I=2：SHA-256 子串过弱、`unit-test:`/`combined` 假绿）；复审 `24ca1d23-b361-4aa1-9b10-01f89a0bee3c` → Approved。C/I=0。
+- **Human edits：** none
+- **红灯：** 仅有 `tests/test_ci_files.py` 时 4 failed，缺 `.github/workflows/ci.yml` / `release.yml` / `.gitlab-ci.yml`（`.superpowers/sdd/t41-red.txt`）。
+- **绿灯：** targeted 4 passed；本地 `python scripts/secret_scan.py .` → clean 78 files；本地 `python -m build --wheel` → `guardedcoder-0.1.0-py3-none-any.whl`。
+- **实现 commit：** `e757a9d47700dc9928c79e77b2e217106f7cdefc`
+- **Minors（不修）：** Actions/镜像未钉 commit digest；SHA-256 仍是 token 子串；CI 测试未强制断言 `push:`。
+- **未声称** 远程 CI 已 pass。未创建真实 tag/Release。
+
+---
+
+## 2026-08-14 · Codex PR-M integration follow-up
+
+- **Trigger:** GitHub Actions run `31767433383` failed in strict hash mode because the Windows-generated lock omitted keyring's conditional Linux `SecretStorage` dependency.
+- **Change:** declared `SecretStorage` explicitly, regenerated both pip-tools hash locks with the frozen PyPI command, and added a regression assertion for the Linux backend.
+- **Verification:** full suite `211 passed, 2 skipped`; secret scan clean (78 files); wheel build passed; a fresh Windows Python 3.12 environment installed `requirements-dev.txt` with `--require-hashes` successfully.
+- **Human edits:** Codex integration fix requested and approved by the project owner.
 
 
 
