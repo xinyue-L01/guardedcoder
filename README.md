@@ -169,6 +169,22 @@ python scripts/hash_wheel.py dist/*.whl
 
 依赖锁定只用 pip-tools + `--generate-hashes`，不用 `pip freeze` 作为交付锁文件。
 
+## 第三方依赖及许可证
+
+直接运行与开发依赖（版本与许可证以安装 metadata 为准，完整条目见 `THIRD_PARTY_LICENSES.md`）：
+
+| 包 | 许可证 |
+|---|---|
+| pydantic | MIT |
+| httpx | BSD-3-Clause |
+| keyring | MIT |
+| defusedxml | PSFL |
+| SecretStorage | BSD-3-Clause |
+| pytest | MIT |
+| pip-tools | BSD |
+| build | MIT |
+| setuptools | MIT |
+
 ## GitHub Release 与 SHA-256 校验
 
 仓库：https://github.com/xinyue-L01/guardedcoder

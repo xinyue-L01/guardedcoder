@@ -33,6 +33,7 @@ README_SECTIONS = (
     "凭据威胁模型",
     "已知限制",
     "开发与测试",
+    "第三方依赖及许可证",
     "GitHub Release 与 SHA-256 校验",
 )
 
@@ -55,6 +56,9 @@ README_KEYWORDS = (
     "失陷",
     "https://github.com/xinyue-L01/guardedcoder",
     "发布后填写",
+    "pydantic",
+    "httpx",
+    "THIRD_PARTY_LICENSES.md",
 )
 
 REQUIRED_PACKAGES = (
