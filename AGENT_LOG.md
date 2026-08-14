@@ -712,6 +712,6 @@
 - **红灯：** 初实现 9 failed；fix 轮 2 failed。
 - **绿灯：** `tests/test_mechanism_demo.py` **9 passed**。
 - **全量：** **484 passed, 4 skipped**。
-- **实现 commit：** `d5a5afc`
-- **修复 commit：** `28c3073`
+- **实现 commit：** `d5a5afc598741011f62bff6d332b02368a36f6c4`
+- **修复 commit：** `28c30736bdb3d2b32a9b2819154d8828427fbae5`
 - **Minor 未修：** 越写范围 HITL 走 `classify_write` 非 `evaluate`（T15）；apply_patch 恢复只演示 retryable_same_attempt。
