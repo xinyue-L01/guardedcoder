@@ -582,7 +582,7 @@ def _handle_resume(
         if result.run_state == "running":
             config = load_app_config(config_file)
             description, _observations, _memories = _load_runtime(conn, task_id)
-            last = _run_steps(
+            _run_steps(
                 conn,
                 task_id=task_id,
                 envelope=envelope,
@@ -591,7 +591,7 @@ def _handle_resume(
                 task_description=description,
                 harness=harness,
             )
-            return 0 if last in (_OK_STOP | {"running"}) else 1
+            return 0 if _task_row(conn, task_id)["run_state"] in _OK_STOP else 1
         return 0 if result.run_state in (_OK_STOP | {"running"}) else 1
     already = conn.execute(
         "SELECT 1 FROM permits WHERE pending_action_id = ?",

@@ -12,6 +12,9 @@ from guardedcoder.config.load import load_app_config
 from guardedcoder.config.synthesize import synthesize_envelope
 from guardedcoder.governance.evaluate import Verdict, VerdictKind
 from guardedcoder.loop import engine as engine_mod
+from guardedcoder.loop import service as service_mod
+from guardedcoder.models.actions import ListDirAction
+from guardedcoder.models.observation import Observation
 from guardedcoder.persist.db import connect
 
 
@@ -681,6 +684,71 @@ def test_approve_resume_continues_loop_to_finish(
     assert run_state in {"succeeded", "unverified"}
     assert run_state != "awaiting_approval"
     assert len(llm.calls) >= 2
+
+
+def test_resume_after_approve_cap_exhaust_is_nonzero(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    origin, config_path, harness, _base = _setup_origin(tmp_path)
+    digest = _envelope_hash(config_path)
+    llm = RecordingLLM(
+        responses=[json.dumps({"action": "apply_patch", "diff": _patch_src_diff()})]
+    )
+    _need_approval(monkeypatch)
+    assert (
+        _run(
+            [
+                "run",
+                "--repo",
+                str(origin),
+                "--task",
+                "needs hitl",
+                "--confirm-envelope-hash",
+                digest,
+            ],
+            config_path=config_path,
+            harness=harness,
+            llm=llm,
+        )
+        == 0
+    )
+    capsys.readouterr()
+    conn = _db(harness)
+    task_id = str(conn.execute("SELECT task_id FROM tasks").fetchone()[0])
+    fingerprint = str(
+        conn.execute(
+            "SELECT fingerprint FROM pending_actions WHERE task_id = ?",
+            (task_id,),
+        ).fetchone()[0]
+    )
+    assert (
+        _run(
+            ["approve", task_id, fingerprint],
+            config_path=config_path,
+            harness=harness,
+            llm=llm,
+        )
+        == 0
+    )
+
+    def _keep_running(*_args: object, **_kwargs: object) -> engine_mod.StepResult:
+        return engine_mod.StepResult(
+            action=ListDirAction(action="list_dir", path="src"),
+            observation=Observation(body="listed", truncated=False),
+            run_state="running",
+        )
+
+    monkeypatch.setattr(service_mod, "step", _keep_running)
+    code = _run(
+        ["resume", task_id, fingerprint],
+        config_path=config_path,
+        harness=harness,
+        llm=BoomLLM(),
+    )
+    assert code != 0
+    assert str(conn.execute("SELECT run_state FROM tasks").fetchone()[0]) == "error"
 
 
 def test_reject_feeds_observation_and_original_task_on_next_step(
