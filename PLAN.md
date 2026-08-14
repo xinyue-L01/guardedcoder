@@ -15,7 +15,7 @@
 - TDD：先红后绿；保存红灯证据。
 - 每个实现 task 一个新鲜 subagent；commit/PR 注明来源与人工修改。
 - 每个大模块一个 worktree / PR；**worktree 必须从依赖 PR 已合并的最新 `main` 创建**，禁止一次性从旧 base 开全部 worktree。
-- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。PR-K 已合入 main。PR-L T39 已在 `feat/l-demo` 实现（以状态表为准）。T43 已在 `feat/n-e2e` 实现（以状态表为准）。下一实现 task 为 T42。
+- **G0 已由产品负责人最终签署。G1 基线已提交**（`53075f05fc5097655d7f5b2f1113b2fbc884da4c`）。PR-K 已合入 main。PR-L T39 已在 `feat/l-demo` 实现（以状态表为准）。T43 已在 `feat/n-e2e` 实现（以状态表为准）。下一为 G2。
 - API Key 只进 keyring；不进 TOML/Git/日志/状态/记忆/Mock。
 - 五工具 + `finish`；不为演示新增 network/push/publish。
 - 完整 patch 禁止静默截断。
@@ -96,7 +96,7 @@ Human edits: <none|简述>
 | T40 | 秘密扫描脚本（先于 CI） | done | ed0c8472335ba953cba7713731a5295d214c394d | WT-M / PR-M |
 | T41 | GitHub Actions + GitLab unit-test | done | e757a9d47700dc9928c79e77b2e217106f7cdefc | WT-M / PR-M（同分支，T40 之后） |
 | T43 | 端到端离线任务生命周期 | done | 19de479f4ec5ffb09dc6b0c293cbcc640e396e26 | WT-N / PR-N |
-| T42 | wheel / 许可证 / README / AGENT_LOG 审计 | pending | — | WT-O / PR-O（T43 与 T41 均完成后） |
+| T42 | wheel / 许可证 / README / AGENT_LOG 审计 | done | 9b201a224a9e24d27e11b2264b144a9ee4972178 | WT-O / PR-O（T43 与 T41 均完成后） |
 | G2 | 人工最终交付 | pending | — | 依赖 T42 与 T43 |
 
 ---

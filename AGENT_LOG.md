@@ -737,3 +737,24 @@
 - **实现 commit：** `19de479f4ec5ffb09dc6b0c293cbcc640e396e26`
 - **最小生产改动：** `src/guardedcoder/governance/evaluate.py`（ApplyPatch 走 `patch_paths`+`classify_write`）；`src/guardedcoder/loop/engine.py`（FAIL Verdict JSON 回灌 observation）。
 - **Minor 未修：** `_as_observation` 对 PASS 的 CommandResult 仍只用 stdout；HITL `risk:` 打印仍固定 NeedApproval；畸形 diff 靠 `PatchError` 停机未收成 Deny；主路径未直接断言 `execution_windows` 行；apply_patch 崩溃测的是种窗后 `recover()` 而非 CLI 中途崩。
+
+---
+
+## 2026-08-14 · T42 最终文档与发布审计（WT-O）
+
+- **Task：** T42 wheel / 许可证 / README / AGENT_LOG 审计。未代写 REFLECTION.md。未创建 git tag / GitHub Release。未合并 PR-O。
+- **Implementer：** Cursor Grok 4.6 subagent / conversation `bb36ed25-db4f-400d-80db-6083bd4259aa`
+- **Spec reviewer：** 初审 `5d7190af-cc2f-4775-b3d9-8bbd4e8ac962` C=0 I=1；复审 `2831b34e-ff47-4286-911e-5f83374eacb2` C=0 I=0 approve。
+- **Quality reviewer：** `7a78e355-7aa0-4f7f-989e-d490c716013f` C=0 I=0 approve。
+- **Human edits：** none
+- **红灯：** `python -m pytest tests/test_release_docs.py -q` → **6 failed**：missing README.md、LICENSE、THIRD_PARTY_LICENSES.md、scripts/hash_wheel.py；AGENT_LOG missing T42；SHA-256 免责声明因缺 README 失败。T01–T41 与 T43 条目已存在，未重写历史。
+- **绿灯：** 同命令 **6 passed**。
+- **全量：** **500 passed, 4 skipped**。
+- **secret scan：** clean，**145 files**。
+- **wheel：** `guardedcoder-0.1.0-py3-none-any.whl` SHA-256 `8958c7f71cb8c3966ca17457efc71e3a1efd442f67dee9c1f2fa4f860297ee3f`（`hashlib.sha256` sidecar；不是签名，不能抵御平台失陷）。
+- **CLI smoke：** 全新 venv `pip install` 本地 wheel 后 `guardedcoder --help` → usage 列出 `run,approve,reject,resume,apply,discard,auth,config,memory`；未使用真实 Key。
+- **实现 commit：** `fb5c627a90a71db09ceead12630ca0f81c7ff8a2`
+- **修复 commit：** `9b201a224a9e24d27e11b2264b144a9ee4972178`（README 列出第三方依赖及许可证）。
+- **AGENT_LOG 审计补项：** 仅追加本条 T42（审计时缺该条目）。未改写 T01–T41 / T43。
+- **未代写** REFLECTION.md。**未创建** git tag / GitHub Release。
+- **Quality Minor 未修：** 许可证测试断言偏松；一条 `· T01–T43` 范围标题可骗过 AGENT_LOG 扫描。
