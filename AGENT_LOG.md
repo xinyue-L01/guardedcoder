@@ -751,6 +751,6 @@
 - **secret scan：** clean，**145 files**。
 - **wheel：** `guardedcoder-0.1.0-py3-none-any.whl` SHA-256 `8958c7f71cb8c3966ca17457efc71e3a1efd442f67dee9c1f2fa4f860297ee3f`（`hashlib.sha256` sidecar；不是签名，不能抵御平台失陷）。
 - **CLI smoke：** 全新 venv `pip install` 本地 wheel 后 `guardedcoder --help` → usage 列出 `run,approve,reject,resume,apply,discard,auth,config,memory`；未使用真实 Key。
-- **实现 commit：** PLACEHOLDER_T42_COMMIT
+- **实现 commit：** `fb5c627a90a71db09ceead12630ca0f81c7ff8a2`
 - **AGENT_LOG 审计补项：** 仅追加本条 T42（审计时缺该条目）。未改写 T01–T41 / T43。
 - **未代写** REFLECTION.md。**未创建** git tag / GitHub Release。
