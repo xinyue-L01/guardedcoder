@@ -22,6 +22,10 @@ class RemoteKeyHttpError(Exception):
     """Raised when a configured key would be sent to a remote HTTP endpoint."""
 
 
+class KeyringError(Exception):
+    """Raised when the OS keyring is unavailable or a credential operation fails."""
+
+
 class StaleRevisionError(Exception):
     """Raised when a task update does not match the expected state_revision."""
 

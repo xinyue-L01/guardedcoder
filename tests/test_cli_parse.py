@@ -27,6 +27,10 @@ def _fake_key() -> str:
 def _argv_for(command: str) -> list[str]:
     if command in {"approve", "reject"}:
         return [command, "task-1", "fp-1"]
+    if command == "auth":
+        return ["auth", "status"]
+    if command == "config":
+        return ["config", "show"]
     return [command]
 
 

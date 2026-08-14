@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Callable, Sequence
+from pathlib import Path
 
 from guardedcoder.security.redact import redact_text
 
@@ -20,6 +21,8 @@ _COMMANDS = (
     "memory",
 )
 _TWO_POSITIONALS = frozenset({"approve", "reject"})
+_CONFIG_COMMANDS = ("init", "validate", "show")
+_AUTH_COMMANDS = ("set", "status", "update", "clear")
 
 
 class _RedactingArgumentParser(argparse.ArgumentParser):
@@ -39,7 +42,15 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     for name in _COMMANDS:
         cmd = sub.add_parser(name)
-        if name in _TWO_POSITIONALS:
+        if name == "config":
+            cfg = cmd.add_subparsers(dest="config_command", required=True)
+            for action in _CONFIG_COMMANDS:
+                cfg.add_parser(action)
+        elif name == "auth":
+            auth = cmd.add_subparsers(dest="auth_command", required=True)
+            for action in _AUTH_COMMANDS:
+                auth.add_parser(action)
+        elif name in _TWO_POSITIONALS:
             cmd.add_argument("task_id")
             cmd.add_argument("fingerprint")
     return parser
@@ -50,15 +61,52 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return build_parser().parse_args(args)
 
 
-def dispatch(_args: argparse.Namespace) -> int:
+def default_dispatch(
+    args: argparse.Namespace,
+    *,
+    getpass_fn: Callable[..., str] | None = None,
+    key_store: object | None = None,
+    config_path: Path | None = None,
+) -> int:
+    if args.command == "config":
+        from guardedcoder.config.commands import handle_config
+
+        return handle_config(args, config_path=config_path)
+    if args.command == "auth":
+        from guardedcoder.auth.commands import handle_auth
+
+        return handle_auth(
+            args,
+            getpass_fn=getpass_fn,
+            key_store=key_store,
+            config_path=config_path,
+        )
     return 0
+
+
+def dispatch(_args: argparse.Namespace) -> int:
+    return default_dispatch(_args)
 
 
 def main(
     argv: Sequence[str] | None = None,
     dispatcher: Dispatcher | None = None,
+    *,
+    getpass_fn: Callable[..., str] | None = None,
+    key_store: object | None = None,
+    config_path: Path | None = None,
 ) -> int:
-    handler = dispatch if dispatcher is None else dispatcher
+    handler = dispatcher
+    if handler is None:
+
+        def handler(parsed: argparse.Namespace) -> int:
+            return default_dispatch(
+                parsed,
+                getpass_fn=getpass_fn,
+                key_store=key_store,
+                config_path=config_path,
+            )
+
     try:
         parsed = parse_args(argv)
     except SystemExit as exc:
