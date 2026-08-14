@@ -247,12 +247,31 @@ def _involved_paths(file_patch: _FilePatch) -> list[str]:
     return paths
 
 
-def apply_patch(
+@dataclass(frozen=True)
+class _PatchPlan:
+    encoded: bytes
+    root: Path
+    planned: dict[str, bytes | None]
+    preimage: dict[str, dict[str, object]]
+    postimage: dict[str, dict[str, object]]
+
+
+def preview_patch(
     worktree: Path,
     diff: str,
     *,
     allow_delete: bool = False,
-) -> PatchApplyResult:
+) -> tuple[dict[str, dict[str, object]], dict[str, dict[str, object]]]:
+    plan = _plan_patch(worktree, diff, allow_delete=allow_delete)
+    return plan.preimage, plan.postimage
+
+
+def _plan_patch(
+    worktree: Path,
+    diff: str,
+    *,
+    allow_delete: bool,
+) -> _PatchPlan:
     encoded = diff.encode("utf-8")
     if len(encoded) > MAX_PATCH_BYTES:
         raise PatchError("patch too large")
@@ -331,6 +350,27 @@ def apply_patch(
         rel: _mark_bytes(planned[rel]) if rel in planned else preimage[rel]
         for rel in all_paths
     }
+    return _PatchPlan(
+        encoded=encoded,
+        root=root,
+        planned=planned,
+        preimage=preimage,
+        postimage=postimage,
+    )
+
+
+def apply_patch(
+    worktree: Path,
+    diff: str,
+    *,
+    allow_delete: bool = False,
+) -> PatchApplyResult:
+    plan = _plan_patch(worktree, diff, allow_delete=allow_delete)
+    encoded = plan.encoded
+    root = plan.root
+    planned = plan.planned
+    preimage = plan.preimage
+    postimage = plan.postimage
 
     originals: dict[str, bytes | None] = {}
     for rel in planned:
