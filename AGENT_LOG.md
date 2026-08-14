@@ -744,6 +744,8 @@
 
 - **Task：** T42 wheel / 许可证 / README / AGENT_LOG 审计。未代写 REFLECTION.md。未创建 git tag / GitHub Release。未合并 PR-O。
 - **Implementer：** Cursor Grok 4.6 subagent / conversation `bb36ed25-db4f-400d-80db-6083bd4259aa`
+- **Spec reviewer：** 初审 `5d7190af-cc2f-4775-b3d9-8bbd4e8ac962` C=0 I=1（README 未按 SPEC §8 列出第三方依赖及许可证）。
+- **Quality reviewer：** 初审未完成（会话无结论）。
 - **Human edits：** none
 - **红灯：** `python -m pytest tests/test_release_docs.py -q` → **6 failed**：missing README.md、LICENSE、THIRD_PARTY_LICENSES.md、scripts/hash_wheel.py；AGENT_LOG missing T42；SHA-256 免责声明因缺 README 失败。T01–T41 与 T43 条目已存在，未重写历史。
 - **绿灯：** 同命令 **6 passed**。
@@ -752,5 +754,6 @@
 - **wheel：** `guardedcoder-0.1.0-py3-none-any.whl` SHA-256 `8958c7f71cb8c3966ca17457efc71e3a1efd442f67dee9c1f2fa4f860297ee3f`（`hashlib.sha256` sidecar；不是签名，不能抵御平台失陷）。
 - **CLI smoke：** 全新 venv `pip install` 本地 wheel 后 `guardedcoder --help` → usage 列出 `run,approve,reject,resume,apply,discard,auth,config,memory`；未使用真实 Key。
 - **实现 commit：** `fb5c627a90a71db09ceead12630ca0f81c7ff8a2`
+- **修复 commit：** `9b201a224a9e24d27e11b2264b144a9ee4972178`（README 列出第三方依赖及许可证）。
 - **AGENT_LOG 审计补项：** 仅追加本条 T42（审计时缺该条目）。未改写 T01–T41 / T43。
 - **未代写** REFLECTION.md。**未创建** git tag / GitHub Release。

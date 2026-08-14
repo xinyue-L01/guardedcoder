@@ -96,7 +96,7 @@ Human edits: <none|简述>
 | T40 | 秘密扫描脚本（先于 CI） | done | ed0c8472335ba953cba7713731a5295d214c394d | WT-M / PR-M |
 | T41 | GitHub Actions + GitLab unit-test | done | e757a9d47700dc9928c79e77b2e217106f7cdefc | WT-M / PR-M（同分支，T40 之后） |
 | T43 | 端到端离线任务生命周期 | done | 19de479f4ec5ffb09dc6b0c293cbcc640e396e26 | WT-N / PR-N |
-| T42 | wheel / 许可证 / README / AGENT_LOG 审计 | done | fb5c627a90a71db09ceead12630ca0f81c7ff8a2 | WT-O / PR-O（T43 与 T41 均完成后） |
+| T42 | wheel / 许可证 / README / AGENT_LOG 审计 | done | 9b201a224a9e24d27e11b2264b144a9ee4972178 | WT-O / PR-O（T43 与 T41 均完成后） |
 | G2 | 人工最终交付 | pending | — | 依赖 T42 与 T43 |
 
 ---
