@@ -519,7 +519,10 @@ def test_approve_then_resume_executes_stored_patch_without_llm(
     origin, config_path, harness, _base = _setup_origin(tmp_path)
     digest = _envelope_hash(config_path)
     llm = RecordingLLM(
-        responses=[json.dumps({"action": "apply_patch", "diff": _patch_src_diff()})]
+        responses=[
+            json.dumps({"action": "apply_patch", "diff": _patch_src_diff()}),
+            json.dumps({"action": "finish", "outcome": "success"}),
+        ]
     )
     _need_approval(monkeypatch)
     assert (
@@ -574,6 +577,16 @@ def test_approve_then_resume_executes_stored_patch_without_llm(
     assert len(llm.calls) == 1
     assert (worktree / "src" / "app.py").read_bytes() == b"print('ok')\n"
 
+    completes_before_patch: list[int] = []
+    inner = llm.complete
+
+    def _complete(messages: list[dict[str, str]]) -> str:
+        if (worktree / "src" / "app.py").read_bytes() != b"print('patched')\n":
+            completes_before_patch.append(1)
+        return inner(messages)
+
+    llm.complete = _complete  # type: ignore[method-assign]
+    monkeypatch.undo()
     assert (
         _run(
             ["resume", task_id, fingerprint],
@@ -583,8 +596,9 @@ def test_approve_then_resume_executes_stored_patch_without_llm(
         )
         == 0
     )
-    assert len(llm.calls) == 1
+    assert completes_before_patch == []
     assert (worktree / "src" / "app.py").read_bytes() == b"print('patched')\n"
+    assert len(llm.calls) >= 2
     permit_fp = str(
         conn.execute(
             "SELECT fingerprint FROM permits WHERE task_id = ?",
@@ -592,6 +606,8 @@ def test_approve_then_resume_executes_stored_patch_without_llm(
         ).fetchone()[0]
     )
     assert permit_fp == fingerprint
+    run_state = str(conn.execute("SELECT run_state FROM tasks").fetchone()[0])
+    assert run_state != "awaiting_approval"
     replay = _run(
         ["resume", task_id, fingerprint],
         config_path=config_path,
@@ -599,6 +615,72 @@ def test_approve_then_resume_executes_stored_patch_without_llm(
         llm=BoomLLM(),
     )
     assert replay != 0
+
+
+def test_approve_resume_continues_loop_to_finish(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    origin, config_path, harness, _base = _setup_origin(tmp_path)
+    digest = _envelope_hash(config_path)
+    llm = RecordingLLM(
+        responses=[
+            json.dumps({"action": "apply_patch", "diff": _patch_src_diff()}),
+            json.dumps({"action": "finish", "outcome": "success"}),
+        ]
+    )
+    _need_approval(monkeypatch)
+    assert (
+        _run(
+            [
+                "run",
+                "--repo",
+                str(origin),
+                "--task",
+                "needs hitl",
+                "--confirm-envelope-hash",
+                digest,
+            ],
+            config_path=config_path,
+            harness=harness,
+            llm=llm,
+        )
+        == 0
+    )
+    capsys.readouterr()
+    conn = _db(harness)
+    task_id = str(conn.execute("SELECT task_id FROM tasks").fetchone()[0])
+    fingerprint = str(
+        conn.execute(
+            "SELECT fingerprint FROM pending_actions WHERE task_id = ?",
+            (task_id,),
+        ).fetchone()[0]
+    )
+    assert (
+        _run(
+            ["approve", task_id, fingerprint],
+            config_path=config_path,
+            harness=harness,
+            llm=llm,
+        )
+        == 0
+    )
+    monkeypatch.undo()
+    assert (
+        _run(
+            ["resume", task_id, fingerprint],
+            config_path=config_path,
+            harness=harness,
+            llm=llm,
+        )
+        == 0
+    )
+    capsys.readouterr()
+    run_state = str(conn.execute("SELECT run_state FROM tasks").fetchone()[0])
+    assert run_state in {"succeeded", "unverified"}
+    assert run_state != "awaiting_approval"
+    assert len(llm.calls) >= 2
 
 
 def test_reject_feeds_observation_and_original_task_on_next_step(

@@ -579,6 +579,19 @@ def _handle_resume(
         )
         if result.observation is not None:
             _append_observation(conn, task_id, result.observation)
+        if result.run_state == "running":
+            config = load_app_config(config_file)
+            description, _observations, _memories = _load_runtime(conn, task_id)
+            last = _run_steps(
+                conn,
+                task_id=task_id,
+                envelope=envelope,
+                llm=_build_llm(config, key_store, llm),
+                worktree=Path(task["worktree_identity"]),
+                task_description=description,
+                harness=harness,
+            )
+            return 0 if last in (_OK_STOP | {"running"}) else 1
         return 0 if result.run_state in (_OK_STOP | {"running"}) else 1
     already = conn.execute(
         "SELECT 1 FROM permits WHERE pending_action_id = ?",
