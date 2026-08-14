@@ -719,3 +719,21 @@
 - **CI 修复 Quality reviewer：** `ae784784-b227-48df-bb6d-274b5637d4b8` C=0 I=0。
 - **CI：** push `31784374172` success；pull_request `31784377086` success。
 - **Minor 未修：** 越写范围 HITL 走 `classify_write` 非 `evaluate`（T15）；apply_patch 恢复只演示 retryable_same_attempt。
+
+---
+
+## 2026-08-14 · T43 离线 E2E（WT-N）
+
+- **Task：** T43 端到端离线任务生命周期。未执行 T42。未合并 PR-N。
+- **Implementer：** `0e8c3013-c52a-4935-9df0-abe5caf51a99`
+- **Spec reviewer：** `7790a4e5-2c6d-45ca-84ea-4f52fafed9f7` C=0 I=0 approve。
+- **Quality reviewer：** `0773cf92-5162-4c02-a57f-c0c680855be8` C=0 I=0 approve。
+- **Human edits：** none。
+- **红灯：** `python -m pytest tests/test_e2e_offline.py -q` → **10 failed**。`evaluate(ApplyPatchAction notes.txt)` 为 Allow 而非 NeedApproval；`_pause_hitl` 因越写范围 patch 被误 Allow 后 `run` 退出码 1。夹具修正 CRLF/`diff --git` 后正确红灯 **9 failed, 1 passed**（mixed apply-back 已绿）。
+- **绿灯：** `tests/test_e2e_offline.py` **10 passed**。
+- **全量：** **494 passed, 4 skipped**。
+- **secret scan：** clean，**140 files**。
+- **git diff --check：** 通过。
+- **实现 commit：** `19de479f4ec5ffb09dc6b0c293cbcc640e396e26`
+- **最小生产改动：** `src/guardedcoder/governance/evaluate.py`（ApplyPatch 走 `patch_paths`+`classify_write`）；`src/guardedcoder/loop/engine.py`（FAIL Verdict JSON 回灌 observation）。
+- **Minor 未修：** `_as_observation` 对 PASS 的 CommandResult 仍只用 stdout；HITL `risk:` 打印仍固定 NeedApproval；畸形 diff 靠 `PatchError` 停机未收成 Deny；主路径未直接断言 `execution_windows` 行；apply_patch 崩溃测的是种窗后 `recover()` 而非 CLI 中途崩。
