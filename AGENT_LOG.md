@@ -683,3 +683,19 @@
 - **实现 commit：** `d501137dca6d0082fa690cfa7f0d392b1e047965`
 - **修复 commit：** `523f86206a89271d5fdb2a4bb9d0032b431b01e7`
 - **Minor 未修：** Windows 二次 clear 可能过严；多余参数脱敏作用于全部子命令。
+
+---
+
+## 2026-08-14 · T38 产品 CLI 集成（WT-K）
+
+- **Task：** T38 run/HITL/apply/discard/memory。未执行 T39。未合并 PR-K。
+- **Implementer：** `c502d4dd`（feat `d3e2605`；HITL fix `943f3f7`；continue `26be8b8`；cap-exhaust `07f6f4a`）；分支修 `6df4f932`（`45041f7`）。
+- **Spec reviewer：** 初审 `a8121798` C=1 I=5；复审 `fb8e8aac` C=0 I=0；分支 C1/I1 复审 `bb2b6e96` C=0 I=0。
+- **Quality reviewer：** 初审 `f0ffc9e8` C=1 I=4；复审 `b6ebdb80` C=0 I=0；分支复审 `3ace1896` C=0 I=0。
+- **Human edits：** none。
+- **红灯：** 初实现 13 failed；HITL fix 7 failed；continue 2 failed；cap-exhaust 1 failed；分支 C1/I1 见 `prk-branch-fix-red.txt`。
+- **绿灯：** CLI 相关 targeted 通过。
+- **全量：** **475 passed, 4 skipped**。
+- **实现 commit：** `d3e26059001b40d47cfb0829067f63ef18e2fc11`
+- **修复 commits：** `943f3f7` `26be8b8` `07f6f4a` `45041f7`
+- **Minor 未修：** reject 后 resume 只跑一步；HITL risk 固定 NeedApproval；run 不 retrieve/gc_task_summaries。
