@@ -348,12 +348,12 @@ def test_recovered_apply_patch_without_claim_does_not_execute(
     assert (ws / "a.txt").read_bytes() == b"before\n"
 
 
-def test_finish_is_noop_without_permit_or_execute(
+def test_finish_without_verify_is_unverified_without_permit_or_execute(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     ws = tmp_path / "ws"
     (ws / "src").mkdir(parents=True)
-    envelope = _envelope()
+    envelope = _patch_envelope()
     conn = connect(tmp_path / "g.db")
     _boot(conn, ws, envelope)
     spy = _spy_order(monkeypatch, conn)
@@ -370,8 +370,9 @@ def test_finish_is_noop_without_permit_or_execute(
 
     assert "create_permit" not in spy.calls
     assert "executor.execute" not in spy.calls
-    assert _task(conn)["run_state"] == "running"
+    assert _task(conn)["run_state"] == "unverified"
     assert result.observation is None
+    assert result.run_state == "unverified"
 
 
 def test_deny_does_not_create_permit_or_execute(

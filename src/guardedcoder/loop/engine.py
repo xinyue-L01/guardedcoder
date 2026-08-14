@@ -6,6 +6,7 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 from guardedcoder.errors import (
@@ -17,6 +18,7 @@ from guardedcoder.fingerprint import SCHEMA_VERSION, compute_fingerprint
 from guardedcoder.governance.evaluate import VerdictKind, evaluate
 from guardedcoder.llm.port import LLMPort
 from guardedcoder.loop.context import build_context
+from guardedcoder.loop.ports import PatchArtifactPort, StubPatchArtifactPort
 from guardedcoder.models.actions import (
     Action,
     ApplyPatchAction,
@@ -28,15 +30,19 @@ from guardedcoder.models.actions import (
     parse_llm_response,
 )
 from guardedcoder.models.command_result import CommandResult
-from guardedcoder.models.envelope import Envelope
+from guardedcoder.models.envelope import CommandProfile, Envelope
 from guardedcoder.models.observation import Observation
 from guardedcoder.models.task import TaskBudget
+from guardedcoder.models.verdict import VerdictStatus
 from guardedcoder.persist.approval import request_approval
 from guardedcoder.persist.claim import claim_recovered_attempt
 from guardedcoder.persist.permit import consume_permit_and_open_window, create_permit
 from guardedcoder.persist.recover import RecoverDecision, recover
 from guardedcoder.persist.store import update_task
 from guardedcoder.persist.txn import write_txn
+from guardedcoder.sensors.exit_code import exit_code_verdict
+from guardedcoder.sensors.junit_xml import junit_xml_verdict
+from guardedcoder.sensors.plan import build_verify_plan
 from guardedcoder.tools.apply_patch import preview_patch
 from guardedcoder.tools.executor import execute
 
@@ -132,14 +138,18 @@ def _require_matching_fingerprint(
 
 
 def _complete_window(
-    conn: sqlite3.Connection, *, task_id: str, window_id: str
+    conn: sqlite3.Connection,
+    *,
+    task_id: str,
+    window_id: str,
+    run_state: str = "running",
 ) -> None:
     task = _task_row(conn, task_id)
     with write_txn(conn):
         cur = conn.execute(
             "UPDATE tasks SET run_state = ?, state_revision = state_revision + 1 "
             "WHERE task_id = ? AND state_revision = ?",
-            ("running", task_id, task["state_revision"]),
+            (run_state, task_id, task["state_revision"]),
         )
         if cur.rowcount == 0:
             raise StaleRevisionError(
@@ -152,14 +162,18 @@ def _complete_window(
 
 
 def _fail_close_window(
-    conn: sqlite3.Connection, *, task_id: str, window_id: str
+    conn: sqlite3.Connection,
+    *,
+    task_id: str,
+    window_id: str,
+    run_state: str = "running",
 ) -> None:
     task = _task_row(conn, task_id)
     with write_txn(conn):
         cur = conn.execute(
             "UPDATE tasks SET run_state = ?, state_revision = state_revision + 1 "
             "WHERE task_id = ? AND state_revision = ?",
-            ("running", task_id, task["state_revision"]),
+            (run_state, task_id, task["state_revision"]),
         )
         if cur.rowcount == 0:
             raise StaleRevisionError(
@@ -246,6 +260,167 @@ def _retry_started_patch(
         raise
 
 
+def _set_task_state(
+    conn: sqlite3.Connection, task_id: str, **fields: object
+) -> None:
+    task = _task_row(conn, task_id)
+    update_task(conn, task_id, task["state_revision"], **fields)
+
+
+def _sensor_verdict(profile: CommandProfile, result: CommandResult):
+    sensor = profile.sensor or "exit_code"
+    if sensor == "junit_xml":
+        expected = result.junit_path if result.junit_path is not None else ""
+        return junit_xml_verdict(
+            result,
+            profile_id=profile.profile_id,
+            expected_junit_path=expected,
+        )
+    return exit_code_verdict(result, profile_id=profile.profile_id)
+
+
+def _after_verify_state(conn: sqlite3.Connection, task_id: str) -> str:
+    remaining = _task_row(conn, task_id)["remaining_steps"]
+    return "running" if remaining > 0 else "exhausted"
+
+
+def _permit_then_execute(
+    conn: sqlite3.Connection,
+    *,
+    task_id: str,
+    envelope: Envelope,
+    action: RunCommandAction,
+    worktree: Path,
+    task_dir: Path | None,
+    window_run_state: str,
+) -> CommandResult | Observation:
+    task = _task_row(conn, task_id)
+    permit_id = create_permit(
+        conn,
+        task_id=task_id,
+        action_id=str(uuid.uuid4()),
+        fingerprint=_fingerprint(task, envelope, action),
+        envelope_hash=envelope.envelope_hash,
+        expected_revision=task["state_revision"],
+    )
+    task = _task_row(conn, task_id)
+    window_id = consume_permit_and_open_window(
+        conn,
+        task_id=task_id,
+        permit_id=permit_id,
+        expected_revision=task["state_revision"],
+        action_kind="run_command",
+    )
+    try:
+        observation = execute(
+            conn,
+            task_id=task_id,
+            permit_id=permit_id,
+            window_id=window_id,
+            action=action,
+            worktree=worktree,
+            task_dir=task_dir,
+            envelope=envelope,
+        )
+    except Exception:
+        _fail_close_window(
+            conn, task_id=task_id, window_id=window_id, run_state="error"
+        )
+        raise
+    _complete_window(
+        conn,
+        task_id=task_id,
+        window_id=window_id,
+        run_state=window_run_state,
+    )
+    return observation
+
+
+def _finish(
+    conn: sqlite3.Connection,
+    *,
+    task_id: str,
+    envelope: Envelope,
+    action: FinishAction,
+    worktree: Path,
+    task_dir: Path | None,
+    patch_port: PatchArtifactPort | None,
+) -> StepResult:
+    if action.outcome == "failed":
+        _set_task_state(conn, task_id, run_state="failed")
+        return StepResult(action=action, observation=None, run_state="failed")
+    if action.outcome == "blocked":
+        _set_task_state(conn, task_id, run_state="blocked")
+        return StepResult(action=action, observation=None, run_state="blocked")
+
+    plan = build_verify_plan(envelope)
+    if not plan.verify_profile_ids:
+        _set_task_state(conn, task_id, run_state="unverified")
+        return StepResult(action=action, observation=None, run_state="unverified")
+
+    _set_task_state(conn, task_id, run_state="verifying")
+    profiles = {item.profile_id: item for item in envelope.profiles}
+    all_pass = True
+    last_observation: Observation | CommandResult | None = None
+    for profile_id in plan.verify_profile_ids:
+        verify_action = RunCommandAction(action="run_command", profile_id=profile_id)
+        task = _task_row(conn, task_id)
+        verdict = evaluate(
+            worktree=worktree,
+            envelope=envelope,
+            action=verify_action,
+            budget=TaskBudget(remaining_steps=task["remaining_steps"]),
+        )
+        if verdict.kind is not VerdictKind.Allow:
+            all_pass = False
+            break
+        last_observation = _permit_then_execute(
+            conn,
+            task_id=task_id,
+            envelope=envelope,
+            action=verify_action,
+            worktree=worktree,
+            task_dir=task_dir,
+            window_run_state="verifying",
+        )
+        if not isinstance(last_observation, CommandResult):
+            all_pass = False
+            continue
+        profile = profiles[profile_id]
+        parsed = _sensor_verdict(profile, last_observation)
+        if parsed.status is not VerdictStatus.PASS:
+            all_pass = False
+
+    if all_pass:
+        port = patch_port if patch_port is not None else StubPatchArtifactPort()
+        task = _task_row(conn, task_id)
+        artifact = port.export(
+            SimpleNamespace(
+                task_id=task_id,
+                worktree_identity=task["worktree_identity"],
+                base_commit=task["base_commit"],
+                max_patch_bytes=1_000_000,
+            )
+        )
+        if artifact.can_mark_patch_ready:
+            _set_task_state(
+                conn,
+                task_id,
+                run_state="succeeded",
+                artifact_state="patch_ready",
+            )
+            return StepResult(
+                action=action,
+                observation=last_observation,
+                run_state="succeeded",
+            )
+    next_state = _after_verify_state(conn, task_id)
+    _set_task_state(conn, task_id, run_state=next_state)
+    return StepResult(
+        action=action, observation=last_observation, run_state=next_state
+    )
+
+
 def step(
     conn: sqlite3.Connection,
     *,
@@ -257,6 +432,7 @@ def step(
     observations: Sequence[object] = (),
     memories: Sequence[object] = (),
     task_dir: Path | None = None,
+    patch_port: PatchArtifactPort | None = None,
 ) -> StepResult:
     task = _task_row(conn, task_id)
     budget = TaskBudget(remaining_steps=task["remaining_steps"])
@@ -293,7 +469,17 @@ def step(
             observation=None,
             run_state=_task_row(conn, task_id)["run_state"],
         )
-    if verdict.kind is VerdictKind.Deny or isinstance(action, FinishAction):
+    if isinstance(action, FinishAction):
+        return _finish(
+            conn,
+            task_id=task_id,
+            envelope=envelope,
+            action=action,
+            worktree=worktree,
+            task_dir=task_dir,
+            patch_port=patch_port,
+        )
+    if verdict.kind is VerdictKind.Deny:
         return StepResult(
             action=action,
             observation=None,
